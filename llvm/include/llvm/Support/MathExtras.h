@@ -375,6 +375,17 @@ template <> constexpr inline bool isInt<32>(int64_t x) {
   return static_cast<int32_t>(x) == x;
 }
 
+/* Changes from Ryan Pasculano */
+/// Checks if an unsigned integer fits into the given bit width.
+template <unsigned N> constexpr inline bool isUnsignedInt(int64_t x) {
+  return N >= 64 || (-(INT64_C(1)<<(N-1)) <= x && x < (INT64_C(1)<<(N-1)));
+}
+// Template specializations to get better code for common cases.
+template <> constexpr inline bool isUnsignedInt<6>(int64_t x) {
+  return (static_cast<uint16_t>(x) == x) and (x < 64);
+}
+/* End of changes from Ryan Pasculano */
+
 /// Checks if a signed integer is an N bit number shifted left by S.
 template <unsigned N, unsigned S>
 constexpr inline bool isShiftedInt(int64_t x) {

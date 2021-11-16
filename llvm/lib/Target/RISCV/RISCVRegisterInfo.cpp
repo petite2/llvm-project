@@ -161,10 +161,59 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
         "Frame offsets outside of the signed 32-bit range not supported");
   }
 
+  /* Changes from Ryan Pasculano for shiftless_six_bit_offset, code does not compile:
+     1) undeclared variable OffsetCheck, 2) non-const BitShift used as template parameter
+  // generate OffsetCheck
+  bool IsValidOffset;
+  if (OffsetCheck < 0){
+    //Offset is invalid need to use scratch register
+    IsValidOffset = false;
+  } else {
+    int BitShift;
+    int OffsetBits = 6;
+    // modify offset check appropriatlely
+    switch (MI.getOpcode()) {
+    default:
+    case RISCV::LB:
+    case RISCV::LBU:
+    case RISCV::SB:
+      BitShift = 0;
+      break;
+    case RISCV::LH:
+    case RISCV::LHU:
+    case RISCV::SH:
+      BitShift = 1;
+      break;
+    case RISCV::LW:
+    case RISCV::FLW:
+    case RISCV::LWU:
+    case RISCV::SW:
+    case RISCV::FSW:
+      BitShift = 2;
+      break;
+    case RISCV::LD:
+    case RISCV::FLD:
+    case RISCV::SD:
+    case RISCV::FSD:
+      BitShift = 3;
+      break;
+    }
+    IsValidOffset = isShiftedUInt<6,BitShift>(Offset);
+  }
+   End of changes from Ryan Pasculano */
+
   MachineBasicBlock &MBB = *MI.getParent();
   bool FrameRegIsKill = false;
 
+  /* Changes from Ryan Pasculano */
+  if (!isInt<12>(Offset)) { // Original condition
+  // if (Offset != 0) { // zero_offset condition
+  // if (!isUnsignedInt<6>(Offset)){ // six_bit_offset condition
+  // if (!IsValidOffset){ // shiftless_six_bit_offset condition
+  /* End of changes from Ryan Pasculano */
+  /* Commented by Ryan Pasculano 
   if (!isInt<12>(Offset)) {
+  */
     assert(isInt<32>(Offset) && "Int32 expected");
     // The offset won't fit in an immediate, so use a scratch register instead
     // Modify Offset and FrameReg appropriately
