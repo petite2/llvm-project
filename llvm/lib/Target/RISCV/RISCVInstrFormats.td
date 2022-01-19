@@ -242,6 +242,22 @@ class RVInstI<bits<3> funct3, RISCVOpcode opcode, dag outs, dag ins,
   let Opcode = opcode.Value;
 }
 
+class RVInstINew<bits<3> funct3, RISCVOpcode opcode, dag outs, dag ins,
+              string opcodestr, string argstr>
+    : RVInst<outs, ins, opcodestr, argstr, [], InstFormatI> {
+  bits<6> color;
+  bits<6> shamt;
+  bits<5> rs1;
+  bits<5> rd;
+
+  let Inst{31-26} = color;
+  let Inst{25-20} = shamt;
+  let Inst{19-15} = rs1;
+  let Inst{14-12} = funct3;
+  let Inst{11-7} = rd;
+  let Opcode = opcode.Value;
+}
+
 class RVInstIShift<bit arithshift, bits<3> funct3, RISCVOpcode opcode,
                    dag outs, dag ins, string opcodestr, string argstr>
     : RVInst<outs, ins, opcodestr, argstr, [], InstFormatI> {
