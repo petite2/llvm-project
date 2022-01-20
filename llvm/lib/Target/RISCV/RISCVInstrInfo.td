@@ -341,10 +341,15 @@ class Load_ri<bits<3> funct3, string opcodestr>
     : RVInstI<funct3, OPC_LOAD, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
               opcodestr, "$rd, ${imm12}(${rs1})">;
 
+// let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
+// class LoadN_ri<bits<3> funct3, string opcodestr>
+//     : RVInstI<funct3, OPC_LOAD_N, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
+//               opcodestr, "$rd, ${imm12}(${rs1})">;
+
 let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
-class LoadN_ri<bits<3> funct3, string opcodestr>
-    : RVInstI<funct3, OPC_LOAD_N, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
-              opcodestr, "$rd, ${imm12}(${rs1})">;
+class LoadN_rii<bits<3> funct3, string opcodestr>
+    : RVInstINew<funct3, OPC_LOAD_N, (outs GPR:$rd), (ins GPR:$rs1, uimmlog2xlen:$color, uimmlog2xlen:$shamt),
+              opcodestr, "$rd, ${shamt}(${rs1}), ${color}">;
 
 // Operands for stores are in the order srcreg, base, offset rather than
 // reflecting the order these fields are specified in the instruction
@@ -434,7 +439,7 @@ def BGEU : BranchCC_rri<0b111, "bgeu">;
 def LB  : Load_ri<0b000, "lb">, Sched<[WriteLDB, ReadMemBase]>;
 def LH  : Load_ri<0b001, "lh">, Sched<[WriteLDH, ReadMemBase]>;
 def LW  : Load_ri<0b010, "lw">, Sched<[WriteLDW, ReadMemBase]>;
-def LWN : LoadN_ri<0b010, "lwn">, Sched<[WriteLDW, ReadMemBase]>;
+def LWN : LoadN_rii<0b010, "lwn">, Sched<[WriteLDW, ReadMemBase]>;
 def LBU : Load_ri<0b100, "lbu">, Sched<[WriteLDB, ReadMemBase]>;
 def LHU : Load_ri<0b101, "lhu">, Sched<[WriteLDH, ReadMemBase]>;
 
