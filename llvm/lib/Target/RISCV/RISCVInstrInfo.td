@@ -348,8 +348,8 @@ class Load_ri<bits<3> funct3, string opcodestr>
 
 let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
 class LoadN_rii<bits<3> funct3, string opcodestr>
-    : RVInstINew<funct3, OPC_LOAD_N, (outs GPR:$rd), (ins GPR:$rs1, uimmlog2xlen:$color, uimmlog2xlen:$shamt),
-              opcodestr, "$rd, ${shamt}(${rs1}), ${color}">;
+    : RVInstINew<funct3, OPC_LOAD_N, (outs GPR:$rd), (ins GPR:$rs1, uimmlog2xlen:$label, uimmlog2xlen:$shamt),
+              opcodestr, "$rd, ${shamt}(${rs1}), ${label}">;
 
 // Operands for stores are in the order srcreg, base, offset rather than
 // reflecting the order these fields are specified in the instruction
