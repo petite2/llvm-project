@@ -439,9 +439,13 @@ def BGEU : BranchCC_rri<0b111, "bgeu">;
 def LB  : Load_ri<0b000, "lb">, Sched<[WriteLDB, ReadMemBase]>;
 def LH  : Load_ri<0b001, "lh">, Sched<[WriteLDH, ReadMemBase]>;
 def LW  : Load_ri<0b010, "lw">, Sched<[WriteLDW, ReadMemBase]>;
-def LWN : LoadN_rii<0b010, "lwn">, Sched<[WriteLDW, ReadMemBase]>;
 def LBU : Load_ri<0b100, "lbu">, Sched<[WriteLDB, ReadMemBase]>;
 def LHU : Load_ri<0b101, "lhu">, Sched<[WriteLDH, ReadMemBase]>;
+def LBN : LoadN_rii<0b000, "lbn">, Sched<[WriteLDB, ReadMemBase]>;
+def LHN : LoadN_rii<0b001, "lhn">, Sched<[WriteLDH, ReadMemBase]>;
+def LWN : LoadN_rii<0b010, "lwn">, Sched<[WriteLDW, ReadMemBase]>;
+def LBUN : LoadN_rii<0b100, "lbun">, Sched<[WriteLDB, ReadMemBase]>;
+def LHUN : LoadN_rii<0b101, "lhun">, Sched<[WriteLDH, ReadMemBase]>;
 
 def SB : Store_rri<0b000, "sb">, Sched<[WriteSTB, ReadStoreData, ReadMemBase]>;
 def SH : Store_rri<0b001, "sh">, Sched<[WriteSTH, ReadStoreData, ReadMemBase]>;
@@ -538,6 +542,8 @@ def CSRRCI : CSR_ii<0b111, "csrrci">;
 let Predicates = [IsRV64] in {
 def LWU   : Load_ri<0b110, "lwu">, Sched<[WriteLDWU, ReadMemBase]>;
 def LD    : Load_ri<0b011, "ld">, Sched<[WriteLDD, ReadMemBase]>;
+def LWUN  : LoadN_rii<0b110, "lwun">, Sched<[WriteLDWU, ReadMemBase]>;
+def LDN   : LoadN_rii<0b011, "ldn">, Sched<[WriteLDD, ReadMemBase]>;
 def SD    : Store_rri<0b011, "sd">, Sched<[WriteSTD, ReadStoreData, ReadMemBase]>;
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
