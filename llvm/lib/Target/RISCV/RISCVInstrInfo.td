@@ -360,6 +360,12 @@ class Store_rri<bits<3> funct3, string opcodestr>
               (ins GPR:$rs2, GPR:$rs1, simm12:$imm12),
               opcodestr, "$rs2, ${imm12}(${rs1})">;
 
+let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
+class StoreN_rrii<bits<3> funct3, string opcodestr>
+    : RVInstSNew<funct3, OPC_STORE_N, (outs),
+              (ins GPR:$rs2, GPR:$rs1, uimmlog2xlen:$label, uimmlog2xlen:$shamt),
+              opcodestr, "$rs2, ${shamt}(${rs1}), ${label}">;
+
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
 class ALU_ri<bits<3> funct3, string opcodestr>
     : RVInstI<funct3, OPC_OP_IMM, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
@@ -450,6 +456,9 @@ def LHUN : LoadN_rii<0b101, "lhun">, Sched<[WriteLDH, ReadMemBase]>;
 def SB : Store_rri<0b000, "sb">, Sched<[WriteSTB, ReadStoreData, ReadMemBase]>;
 def SH : Store_rri<0b001, "sh">, Sched<[WriteSTH, ReadStoreData, ReadMemBase]>;
 def SW : Store_rri<0b010, "sw">, Sched<[WriteSTW, ReadStoreData, ReadMemBase]>;
+def SBN : StoreN_rrii<0b000, "sbn">, Sched<[WriteSTB, ReadStoreData, ReadMemBase]>;
+def SHN : StoreN_rrii<0b001, "shn">, Sched<[WriteSTH, ReadStoreData, ReadMemBase]>;
+def SWN : StoreN_rrii<0b010, "swn">, Sched<[WriteSTW, ReadStoreData, ReadMemBase]>;
 
 // ADDI isn't always rematerializable, but isReMaterializable will be used as
 // a hint which is verified in isReallyTriviallyReMaterializable.
@@ -545,6 +554,7 @@ def LD    : Load_ri<0b011, "ld">, Sched<[WriteLDD, ReadMemBase]>;
 def LWUN  : LoadN_rii<0b110, "lwun">, Sched<[WriteLDWU, ReadMemBase]>;
 def LDN   : LoadN_rii<0b011, "ldn">, Sched<[WriteLDD, ReadMemBase]>;
 def SD    : Store_rri<0b011, "sd">, Sched<[WriteSTD, ReadStoreData, ReadMemBase]>;
+def SDN   : StoreN_rrii<0b011, "sdn">, Sched<[WriteSTD, ReadStoreData, ReadMemBase]>;
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
 def ADDIW : RVInstI<0b000, OPC_OP_IMM_32, (outs GPR:$rd),

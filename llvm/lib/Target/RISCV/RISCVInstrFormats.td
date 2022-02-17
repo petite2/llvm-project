@@ -75,6 +75,7 @@ def OPC_OP_IMM    : RISCVOpcode<0b0010011>;
 def OPC_AUIPC     : RISCVOpcode<0b0010111>;
 def OPC_OP_IMM_32 : RISCVOpcode<0b0011011>;
 def OPC_STORE     : RISCVOpcode<0b0100011>;
+def OPC_STORE_N   : RISCVOpcode<0b0101011>;
 def OPC_STORE_FP  : RISCVOpcode<0b0100111>;
 def OPC_AMO       : RISCVOpcode<0b0101111>;
 def OPC_OP        : RISCVOpcode<0b0110011>;
@@ -304,6 +305,23 @@ class RVInstS<bits<3> funct3, RISCVOpcode opcode, dag outs, dag ins,
   let Inst{19-15} = rs1;
   let Inst{14-12} = funct3;
   let Inst{11-7} = imm12{4-0};
+  let Opcode = opcode.Value;
+}
+
+class RVInstSNew<bits<3> funct3, RISCVOpcode opcode, dag outs, dag ins,
+              string opcodestr, string argstr>
+    : RVInst<outs, ins, opcodestr, argstr, [], InstFormatI> {
+  bits<6> label;
+  bits<6> shamt;
+  bits<5> rs2;
+  bits<5> rs1;
+
+  let Inst{31-26} = label;
+  let Inst{25} = shamt{5};
+  let Inst{24-20} = rs2;
+  let Inst{19-15} = rs1;
+  let Inst{14-12} = funct3;
+  let Inst{11-7} = shamt{4-0};
   let Opcode = opcode.Value;
 }
 
