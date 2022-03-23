@@ -25,6 +25,8 @@
 #define GET_REGINFO_TARGET_DESC
 #include "RISCVGenRegisterInfo.inc"
 
+#include <iostream>
+
 using namespace llvm;
 
 static_assert(RISCV::X1 == RISCV::X0 + 1, "Register list not consecutive");
@@ -155,58 +157,72 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   int Offset =
       getFrameLowering(MF)->getFrameIndexReference(MF, FrameIndex, FrameReg) +
       MI.getOperand(FIOperandNum + 1).getImm();
+  
+  unsigned offset_bits = 6; // Fixed at 6-bit for now
+  int shift_bits = -1; // Default do not need additional fixing
+  bool is_labeled = false;
+  switch (MI.getOpcode()) {
+    case RISCV::LDN:
+    case RISCV::SDN:
+      shift_bits++;
+    case RISCV::LWN:
+    case RISCV::LWUN:
+    case RISCV::SWN:
+      shift_bits++;
+    case RISCV::LHN:
+    case RISCV::LHUN:
+    case RISCV::SHN:
+      shift_bits++;
+    case RISCV::LBN:
+    case RISCV::LBUN:
+    case RISCV::SBN:
+      shift_bits++;
+      is_labeled = true;
+      break;
+    /*
+    case RISCV::LB:
+    case RISCV::LBU:
+    case RISCV::SB:
+      shift_bits = 0;
+      break;
+    case RISCV::LH:
+    case RISCV::LHU:
+    case RISCV::SH:
+      shift_bits = 1;
+      break;
+    case RISCV::LW:
+    case RISCV::LWU:
+    case RISCV::SW:
+    // case RISCV::FLW:
+    // case RISCV::FSW:
+      shift_bits = 2;
+      break;
+    case RISCV::LD:
+    case RISCV::SD:
+    // case RISCV::FLD:
+    // case RISCV::FSD:
+      shift_bits = 3;
+      break;
+    */
+    default:
+      break;
+  }
+  if (is_labeled) {
+    int label = MI.getOperand(FIOperandNum + 2).getImm();
+    assert(label == 0);
+    Offset += label << offset_bits;
+  }
 
   if (!isInt<32>(Offset)) {
     report_fatal_error(
         "Frame offsets outside of the signed 32-bit range not supported");
   }
 
-  /* Changes from Ryan Pasculano for shiftless_six_bit_offset, code does not compile:
-     1) undeclared variable OffsetCheck, 2) non-const BitShift used as template parameter
-  // generate OffsetCheck
-  bool IsValidOffset;
-  if (OffsetCheck < 0){
-    //Offset is invalid need to use scratch register
-    IsValidOffset = false;
-  } else {
-    int BitShift;
-    int OffsetBits = 6;
-    // modify offset check appropriatlely
-    switch (MI.getOpcode()) {
-    default:
-    case RISCV::LB:
-    case RISCV::LBU:
-    case RISCV::SB:
-      BitShift = 0;
-      break;
-    case RISCV::LH:
-    case RISCV::LHU:
-    case RISCV::SH:
-      BitShift = 1;
-      break;
-    case RISCV::LW:
-    case RISCV::FLW:
-    case RISCV::LWU:
-    case RISCV::SW:
-    case RISCV::FSW:
-      BitShift = 2;
-      break;
-    case RISCV::LD:
-    case RISCV::FLD:
-    case RISCV::SD:
-    case RISCV::FSD:
-      BitShift = 3;
-      break;
-    }
-    IsValidOffset = isShiftedUInt<6,BitShift>(Offset);
-  }
-   End of changes from Ryan Pasculano */
-
   MachineBasicBlock &MBB = *MI.getParent();
   bool FrameRegIsKill = false;
 
   /* Changes from Ryan Pasculano */
-  if (!isInt<12>(Offset)) { // Original condition
+  // if (!isInt<12>(Offset)) { // Original condition
   // if (Offset != 0) { // zero_offset condition
   // if (!isUnsignedInt<6>(Offset)){ // six_bit_offset condition
   // if (!IsValidOffset){ // shiftless_six_bit_offset condition
@@ -214,6 +230,7 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   /* Commented by Ryan Pasculano 
   if (!isInt<12>(Offset)) {
   */
+  if (!isInt<12>(Offset)) {
     assert(isInt<32>(Offset) && "Int32 expected");
     // The offset won't fit in an immediate, so use a scratch register instead
     // Modify Offset and FrameReg appropriately
@@ -225,6 +242,24 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     Offset = 0;
     FrameReg = ScratchReg;
     FrameRegIsKill = true;
+  } 
+  else if (shift_bits >= 0 && !isUIntN(offset_bits, Offset >> shift_bits)) {
+    assert(isInt<12>(Offset) && "Int12 expected");
+    // The offset won't fit in an immediate, so use a scratch register instead
+    // Modify Offset and FrameReg appropriately
+    Register ScratchReg = MRI.createVirtualRegister(&RISCV::GPRRegClass);
+    BuildMI(MBB, II, DL, TII->get(RISCV::ADDI), ScratchReg)
+        .addReg(FrameReg)
+        .addImm(Offset);
+    Offset = 0;
+    FrameReg = ScratchReg;
+    FrameRegIsKill = true;
+  } else if (shift_bits >= 0 && isUIntN(offset_bits, Offset >> shift_bits)) {
+    assert(((Offset & ((1 << shift_bits) - 1)) == 0) && "Aligned offset expected");
+    Offset = Offset >> shift_bits;
+  }
+  if (is_labeled) {
+    MI.getOperand(FIOperandNum + 2).ChangeToImmediate(0b111000); // The "Label" part can be set like this
   }
 
   MI.getOperand(FIOperandNum)

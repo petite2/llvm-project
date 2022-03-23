@@ -524,11 +524,25 @@ void RISCVDAGToDAGISel::doPeepholeLoadStoreADDI() {
 
     int OffsetOpIdx;
     int BaseOpIdx;
+    bool IsNewMemOp = false;
+    unsigned offset_bits = 6;
+    unsigned shift_bits = 0;
 
     // Only attempt this optimisation for I-type loads and S-type stores.
     switch (N->getMachineOpcode()) {
     default:
       continue;
+    case RISCV::LDN:
+      shift_bits++;
+    case RISCV::LWN:
+    case RISCV::LWUN:
+      shift_bits++;
+    case RISCV::LHN:
+    case RISCV::LHUN:
+      shift_bits++;
+    case RISCV::LBN:
+    case RISCV::LBUN:
+      IsNewMemOp = true;
     case RISCV::LB:
     case RISCV::LH:
     case RISCV::LW:
@@ -541,6 +555,14 @@ void RISCVDAGToDAGISel::doPeepholeLoadStoreADDI() {
       BaseOpIdx = 0;
       OffsetOpIdx = 1;
       break;
+    case RISCV::SDN:
+      shift_bits++;
+    case RISCV::SWN:
+      shift_bits++;
+    case RISCV::SHN:
+      shift_bits++;
+    case RISCV::SBN:
+      IsNewMemOp = true;
     case RISCV::SB:
     case RISCV::SH:
     case RISCV::SW:
@@ -567,6 +589,8 @@ void RISCVDAGToDAGISel::doPeepholeLoadStoreADDI() {
     if (auto Const = dyn_cast<ConstantSDNode>(ImmOperand)) {
       int64_t Offset1 = Const->getSExtValue();
       int64_t CombinedOffset = Offset1 + Offset2;
+      if (IsNewMemOp && !isUIntN(offset_bits, CombinedOffset >> shift_bits))
+        continue;
       if (!isInt<12>(CombinedOffset))
         continue;
       ImmOperand = CurDAG->getTargetConstant(CombinedOffset, SDLoc(ImmOperand),
@@ -582,6 +606,8 @@ void RISCVDAGToDAGISel::doPeepholeLoadStoreADDI() {
         continue;
       int64_t Offset1 = GA->getOffset();
       int64_t CombinedOffset = Offset1 + Offset2;
+      if (IsNewMemOp && !isUIntN(offset_bits, CombinedOffset >> shift_bits))
+        continue;
       ImmOperand = CurDAG->getTargetGlobalAddress(
           GA->getGlobal(), SDLoc(ImmOperand), ImmOperand.getValueType(),
           CombinedOffset, GA->getTargetFlags());
@@ -592,6 +618,8 @@ void RISCVDAGToDAGISel::doPeepholeLoadStoreADDI() {
         continue;
       int64_t Offset1 = CP->getOffset();
       int64_t CombinedOffset = Offset1 + Offset2;
+      if (IsNewMemOp && !isUIntN(offset_bits, CombinedOffset >> shift_bits))
+        continue;
       ImmOperand = CurDAG->getTargetConstantPool(
           CP->getConstVal(), ImmOperand.getValueType(), CP->getAlign(),
           CombinedOffset, CP->getTargetFlags());
