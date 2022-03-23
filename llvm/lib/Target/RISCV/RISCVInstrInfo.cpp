@@ -50,6 +50,13 @@ unsigned RISCVInstrInfo::isLoadFromStackSlot(const MachineInstr &MI,
   case RISCV::LWU:
   case RISCV::LD:
   case RISCV::FLD:
+  case RISCV::LBN:
+  case RISCV::LBUN:
+  case RISCV::LHN:
+  case RISCV::LHUN:
+  case RISCV::LWN:
+  case RISCV::LWUN:
+  case RISCV::LDN:
     break;
   }
 
@@ -73,6 +80,10 @@ unsigned RISCVInstrInfo::isStoreToStackSlot(const MachineInstr &MI,
   case RISCV::FSW:
   case RISCV::SD:
   case RISCV::FSD:
+  case RISCV::SBN:
+  case RISCV::SHN:
+  case RISCV::SWN:
+  case RISCV::SDN:
     break;
   }
 
@@ -123,7 +134,8 @@ void RISCVInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
 
   if (RISCV::GPRRegClass.hasSubClassEq(RC))
     Opcode = TRI->getRegSizeInBits(RISCV::GPRRegClass) == 32 ?
-             RISCV::SW : RISCV::SD;
+             // RISCV::SW : RISCV::SD;
+             RISCV::SWN : RISCV::SDN;
   else if (RISCV::FPR32RegClass.hasSubClassEq(RC))
     Opcode = RISCV::FSW;
   else if (RISCV::FPR64RegClass.hasSubClassEq(RC))
@@ -131,6 +143,13 @@ void RISCVInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
   else
     llvm_unreachable("Can't store this register to stack slot");
 
+  if (Opcode == RISCV::SDN || Opcode == RISCV::SWN) {
+    BuildMI(MBB, I, DL, get(Opcode))
+        .addReg(SrcReg, getKillRegState(IsKill))
+        .addFrameIndex(FI)
+        .addImm(0)
+        .addImm(0);
+  } else
   BuildMI(MBB, I, DL, get(Opcode))
       .addReg(SrcReg, getKillRegState(IsKill))
       .addFrameIndex(FI)
@@ -150,7 +169,8 @@ void RISCVInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
 
   if (RISCV::GPRRegClass.hasSubClassEq(RC))
     Opcode = TRI->getRegSizeInBits(RISCV::GPRRegClass) == 32 ?
-             RISCV::LW : RISCV::LD;
+             RISCV::LWN : RISCV::LDN;
+            //  RISCV::LW : RISCV::LD;
   else if (RISCV::FPR32RegClass.hasSubClassEq(RC))
     Opcode = RISCV::FLW;
   else if (RISCV::FPR64RegClass.hasSubClassEq(RC))
@@ -158,6 +178,9 @@ void RISCVInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
   else
     llvm_unreachable("Can't load this register from stack slot");
 
+  if (Opcode == RISCV::LDN || Opcode == RISCV::LWN) {
+    BuildMI(MBB, I, DL, get(Opcode), DstReg).addFrameIndex(FI).addImm(0).addImm(0);
+  } else
   BuildMI(MBB, I, DL, get(Opcode), DstReg).addFrameIndex(FI).addImm(0);
 }
 
@@ -589,7 +612,10 @@ bool RISCVInstrInfo::getMemOperandWithOffsetWidth(
   // Here we assume the standard RISC-V ISA, which uses a base+offset
   // addressing mode. You'll need to relax these conditions to support custom
   // load/stores instructions.
-  if (LdSt.getNumExplicitOperands() != 3)
+  
+  // Relaxing the condition to include new labeled memory access instructions
+  // if (LdSt.getNumExplicitOperands() != 3)
+  if (LdSt.getNumExplicitOperands() != 3 && LdSt.getNumExplicitOperands() != 4)
     return false;
   if (!LdSt.getOperand(1).isReg() || !LdSt.getOperand(2).isImm())
     return false;

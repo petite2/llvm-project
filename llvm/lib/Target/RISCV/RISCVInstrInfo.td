@@ -310,6 +310,18 @@ def HI20 : SDNodeXForm<imm, [{
                                    SDLoc(N), N->getValueType(0));
 }]>;
 
+// Extract least significant 6 bits from an immediate value
+def LO6 : SDNodeXForm<imm, [{
+  return CurDAG->getTargetConstant(N->getSExtValue() & 0x3f,
+                                   SDLoc(N), N->getValueType(0));
+}]>;
+
+// Extract bits 6 to 12 from an immediate value
+def LO6To12 : SDNodeXForm<imm, [{
+  return CurDAG->getTargetConstant((N->getSExtValue() >> 6) & 0x3f,
+                                   SDLoc(N), N->getValueType(0));
+}]>;
+
 // Return the negation of an immediate value.
 def NegImm : SDNodeXForm<imm, [{
   return CurDAG->getTargetConstant(-N->getSExtValue(), SDLoc(N),
@@ -348,7 +360,7 @@ class Load_ri<bits<3> funct3, string opcodestr>
 
 let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
 class LoadN_rii<bits<3> funct3, string opcodestr>
-    : RVInstINew<funct3, OPC_LOAD_N, (outs GPR:$rd), (ins GPR:$rs1, uimmlog2xlen:$label, uimmlog2xlen:$shamt),
+    : RVInstINew<funct3, OPC_LOAD_N, (outs GPR:$rd), (ins GPR:$rs1, uimmlog2xlen:$shamt, uimmlog2xlen:$label),
               opcodestr, "$rd, ${shamt}(${rs1}), ${label}">;
 
 // Operands for stores are in the order srcreg, base, offset rather than
@@ -363,7 +375,7 @@ class Store_rri<bits<3> funct3, string opcodestr>
 let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
 class StoreN_rrii<bits<3> funct3, string opcodestr>
     : RVInstSNew<funct3, OPC_STORE_N, (outs),
-              (ins GPR:$rs2, GPR:$rs1, uimmlog2xlen:$label, uimmlog2xlen:$shamt),
+              (ins GPR:$rs2, GPR:$rs1, uimmlog2xlen:$shamt, uimmlog2xlen:$label),
               opcodestr, "$rs2, ${shamt}(${rs1}), ${label}">;
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
@@ -1078,13 +1090,43 @@ multiclass LdPat<PatFrag LoadOp, RVInst Inst> {
             (Inst AddrFI:$rs1, simm12:$imm12)>;
 }
 
-defm : LdPat<sextloadi8, LB>;
-defm : LdPat<extloadi8, LB>;
-defm : LdPat<sextloadi16, LH>;
-defm : LdPat<extloadi16, LH>;
-defm : LdPat<load, LW>, Requires<[IsRV32]>;
-defm : LdPat<zextloadi8, LBU>;
-defm : LdPat<zextloadi16, LHU>;
+// For new mem insts
+multiclass LdPatNnoFI<PatFrag LoadOp, RVInst Inst> {
+  def : Pat<(LoadOp GPR:$rs1), (Inst GPR:$rs1, 0)>;
+  def : Pat<(LoadOp (add GPR:$rs1, simm12:$imm12)),
+            (Inst GPR:$rs1, simm12:$imm12)>;
+}
+multiclass LdPatNFI<PatFrag LoadOp, RVInst Inst> {
+  def : Pat<(LoadOp AddrFI:$rs1), (Inst AddrFI:$rs1, 0, 0)>;
+  def : Pat<(LoadOp (add AddrFI:$rs1, simm12:$imm12)),
+            (Inst AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+  def : Pat<(LoadOp (IsOrAdd AddrFI:$rs1, simm12:$imm12)),
+            (Inst AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+}
+
+// defm : LdPat<sextloadi8, LB>;
+// defm : LdPat<extloadi8, LB>;
+// defm : LdPat<sextloadi16, LH>;
+// defm : LdPat<extloadi16, LH>;
+// defm : LdPat<load, LW>, Requires<[IsRV32]>;
+// defm : LdPat<zextloadi8, LBU>;
+// defm : LdPat<zextloadi16, LHU>;
+
+defm : LdPatNnoFI<sextloadi8, LB>;
+defm : LdPatNnoFI<extloadi8, LB>;
+defm : LdPatNnoFI<sextloadi16, LH>;
+defm : LdPatNnoFI<extloadi16, LH>;
+defm : LdPatNnoFI<load, LW>, Requires<[IsRV32]>;
+defm : LdPatNnoFI<zextloadi8, LBU>;
+defm : LdPatNnoFI<zextloadi16, LHU>;
+
+defm : LdPatNFI<sextloadi8, LBN>;
+defm : LdPatNFI<extloadi8, LBN>;
+defm : LdPatNFI<sextloadi16, LHN>;
+defm : LdPatNFI<extloadi16, LHN>;
+defm : LdPatNFI<load, LWN>, Requires<[IsRV32]>;
+defm : LdPatNFI<zextloadi8, LBUN>;
+defm : LdPatNFI<zextloadi16, LHUN>;
 
 /// Stores
 
@@ -1099,9 +1141,32 @@ multiclass StPat<PatFrag StoreOp, RVInst Inst, RegisterClass StTy> {
             (Inst StTy:$rs2, AddrFI:$rs1, simm12:$imm12)>;
 }
 
-defm : StPat<truncstorei8, SB, GPR>;
-defm : StPat<truncstorei16, SH, GPR>;
-defm : StPat<store, SW, GPR>, Requires<[IsRV32]>;
+// For new mem insts
+multiclass StPatNnoFI<PatFrag StoreOp, RVInst Inst, RegisterClass StTy> {
+  def : Pat<(StoreOp StTy:$rs2, GPR:$rs1), (Inst StTy:$rs2, GPR:$rs1, 0)>;
+  def : Pat<(StoreOp StTy:$rs2, (add GPR:$rs1, simm12:$imm12)),
+            (Inst StTy:$rs2, GPR:$rs1, simm12:$imm12)>;
+}
+
+multiclass StPatNFI<PatFrag StoreOp, RVInst Inst, RegisterClass StTy> {
+  def : Pat<(StoreOp StTy:$rs2, AddrFI:$rs1), (Inst StTy:$rs2, AddrFI:$rs1, 0, 0)>;
+  def : Pat<(StoreOp StTy:$rs2, (add AddrFI:$rs1, simm12:$imm12)),
+            (Inst StTy:$rs2, AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+  def : Pat<(StoreOp StTy:$rs2, (IsOrAdd AddrFI:$rs1, simm12:$imm12)),
+            (Inst StTy:$rs2, AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+}
+
+// defm : StPat<truncstorei8, SB, GPR>;
+// defm : StPat<truncstorei16, SH, GPR>;
+// defm : StPat<store, SW, GPR>, Requires<[IsRV32]>;
+
+defm : StPatNnoFI<truncstorei8, SB, GPR>;
+defm : StPatNnoFI<truncstorei16, SH, GPR>;
+defm : StPatNnoFI<store, SW, GPR>, Requires<[IsRV32]>;
+
+defm : StPatNFI<truncstorei8, SBN, GPR>;
+defm : StPatNFI<truncstorei16, SHN, GPR>;
+defm : StPatNFI<store, SWN, GPR>, Requires<[IsRV32]>;
 
 /// Fences
 
@@ -1163,15 +1228,31 @@ def : PatGprGpr<riscv_sraw, SRAW>;
 
 /// Loads
 
-defm : LdPat<sextloadi32, LW>;
-defm : LdPat<extloadi32, LW>;
-defm : LdPat<zextloadi32, LWU>;
-defm : LdPat<load, LD>;
+// defm : LdPat<sextloadi32, LW>;
+// defm : LdPat<extloadi32, LW>;
+// defm : LdPat<zextloadi32, LWU>;
+// defm : LdPat<load, LD>;
+
+defm : LdPatNnoFI<sextloadi32, LW>;
+defm : LdPatNnoFI<extloadi32, LW>;
+defm : LdPatNnoFI<zextloadi32, LWU>;
+defm : LdPatNnoFI<load, LD>;
+
+defm : LdPatNFI<sextloadi32, LWN>;
+defm : LdPatNFI<extloadi32, LWN>;
+defm : LdPatNFI<zextloadi32, LWUN>;
+defm : LdPatNFI<load, LDN>;
 
 /// Stores
 
-defm : StPat<truncstorei32, SW, GPR>;
-defm : StPat<store, SD, GPR>;
+// defm : StPat<truncstorei32, SW, GPR>;
+// defm : StPat<store, SD, GPR>;
+
+defm : StPatNnoFI<truncstorei32, SW, GPR>;
+defm : StPatNnoFI<store, SD, GPR>;
+
+defm : StPatNFI<truncstorei32, SWN, GPR>;
+defm : StPatNFI<store, SDN, GPR>;
 } // Predicates = [IsRV64]
 
 /// readcyclecounter
