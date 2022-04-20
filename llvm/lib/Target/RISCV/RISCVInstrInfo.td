@@ -1091,6 +1091,18 @@ multiclass LdPat<PatFrag LoadOp, RVInst Inst> {
 }
 
 // For new mem insts
+multiclass LdPatN<PatFrag LoadOp, RVInst Inst> {
+  def : Pat<(LoadOp GPR:$rs1), (Inst GPR:$rs1, 0, 56)>;
+  def : Pat<(LoadOp AddrFI:$rs1), (Inst AddrFI:$rs1, 0, 56)>;
+  // def : Pat<(LoadOp (add GPR:$rs1, simm12:$imm12)),
+  //           (Inst GPR:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+  def : Pat<(LoadOp (add GPR:$rs1, simm12:$imm12)),
+            (Inst (ADDI GPR:$rs1, simm12:$imm12), 0, 56)>;
+  def : Pat<(LoadOp (add AddrFI:$rs1, simm12:$imm12)),
+            (Inst AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+  def : Pat<(LoadOp (IsOrAdd AddrFI:$rs1, simm12:$imm12)),
+            (Inst AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+}
 multiclass LdPatNnoFI<PatFrag LoadOp, RVInst Inst> {
   def : Pat<(LoadOp GPR:$rs1), (Inst GPR:$rs1, 0)>;
   def : Pat<(LoadOp (add GPR:$rs1, simm12:$imm12)),
@@ -1112,21 +1124,29 @@ multiclass LdPatNFI<PatFrag LoadOp, RVInst Inst> {
 // defm : LdPat<zextloadi8, LBU>;
 // defm : LdPat<zextloadi16, LHU>;
 
-defm : LdPatNnoFI<sextloadi8, LB>;
-defm : LdPatNnoFI<extloadi8, LB>;
-defm : LdPatNnoFI<sextloadi16, LH>;
-defm : LdPatNnoFI<extloadi16, LH>;
-defm : LdPatNnoFI<load, LW>, Requires<[IsRV32]>;
-defm : LdPatNnoFI<zextloadi8, LBU>;
-defm : LdPatNnoFI<zextloadi16, LHU>;
+defm : LdPatN<sextloadi8, LBN>;
+defm : LdPatN<extloadi8, LBN>;
+defm : LdPatN<sextloadi16, LHN>;
+defm : LdPatN<extloadi16, LHN>;
+defm : LdPatN<load, LWN>, Requires<[IsRV32]>;
+defm : LdPatN<zextloadi8, LBUN>;
+defm : LdPatN<zextloadi16, LHUN>;
 
-defm : LdPatNFI<sextloadi8, LBN>;
-defm : LdPatNFI<extloadi8, LBN>;
-defm : LdPatNFI<sextloadi16, LHN>;
-defm : LdPatNFI<extloadi16, LHN>;
-defm : LdPatNFI<load, LWN>, Requires<[IsRV32]>;
-defm : LdPatNFI<zextloadi8, LBUN>;
-defm : LdPatNFI<zextloadi16, LHUN>;
+// defm : LdPatNnoFI<sextloadi8, LB>;
+// defm : LdPatNnoFI<extloadi8, LB>;
+// defm : LdPatNnoFI<sextloadi16, LH>;
+// defm : LdPatNnoFI<extloadi16, LH>;
+// defm : LdPatNnoFI<load, LW>, Requires<[IsRV32]>;
+// defm : LdPatNnoFI<zextloadi8, LBU>;
+// defm : LdPatNnoFI<zextloadi16, LHU>;
+
+// defm : LdPatNFI<sextloadi8, LBN>;
+// defm : LdPatNFI<extloadi8, LBN>;
+// defm : LdPatNFI<sextloadi16, LHN>;
+// defm : LdPatNFI<extloadi16, LHN>;
+// defm : LdPatNFI<load, LWN>, Requires<[IsRV32]>;
+// defm : LdPatNFI<zextloadi8, LBUN>;
+// defm : LdPatNFI<zextloadi16, LHUN>;
 
 /// Stores
 
@@ -1142,12 +1162,23 @@ multiclass StPat<PatFrag StoreOp, RVInst Inst, RegisterClass StTy> {
 }
 
 // For new mem insts
+multiclass StPatN<PatFrag StoreOp, RVInst Inst, RegisterClass StTy> {
+  def : Pat<(StoreOp StTy:$rs2, GPR:$rs1), (Inst StTy:$rs2, GPR:$rs1, 0, 56)>;
+  def : Pat<(StoreOp StTy:$rs2, AddrFI:$rs1), (Inst StTy:$rs2, AddrFI:$rs1, 0, 56)>;
+  // def : Pat<(StoreOp StTy:$rs2, (add GPR:$rs1, simm12:$imm12)),
+  //           (Inst StTy:$rs2, GPR:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+  def : Pat<(StoreOp StTy:$rs2, (add GPR:$rs1, simm12:$imm12)),
+            (Inst StTy:$rs2, (ADDI GPR:$rs1, simm12:$imm12), 0, 56)>;
+  def : Pat<(StoreOp StTy:$rs2, (add AddrFI:$rs1, simm12:$imm12)),
+            (Inst StTy:$rs2, AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+  def : Pat<(StoreOp StTy:$rs2, (IsOrAdd AddrFI:$rs1, simm12:$imm12)),
+            (Inst StTy:$rs2, AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+}
 multiclass StPatNnoFI<PatFrag StoreOp, RVInst Inst, RegisterClass StTy> {
   def : Pat<(StoreOp StTy:$rs2, GPR:$rs1), (Inst StTy:$rs2, GPR:$rs1, 0)>;
   def : Pat<(StoreOp StTy:$rs2, (add GPR:$rs1, simm12:$imm12)),
             (Inst StTy:$rs2, GPR:$rs1, simm12:$imm12)>;
 }
-
 multiclass StPatNFI<PatFrag StoreOp, RVInst Inst, RegisterClass StTy> {
   def : Pat<(StoreOp StTy:$rs2, AddrFI:$rs1), (Inst StTy:$rs2, AddrFI:$rs1, 0, 0)>;
   def : Pat<(StoreOp StTy:$rs2, (add AddrFI:$rs1, simm12:$imm12)),
@@ -1160,13 +1191,17 @@ multiclass StPatNFI<PatFrag StoreOp, RVInst Inst, RegisterClass StTy> {
 // defm : StPat<truncstorei16, SH, GPR>;
 // defm : StPat<store, SW, GPR>, Requires<[IsRV32]>;
 
-defm : StPatNnoFI<truncstorei8, SB, GPR>;
-defm : StPatNnoFI<truncstorei16, SH, GPR>;
-defm : StPatNnoFI<store, SW, GPR>, Requires<[IsRV32]>;
+defm : StPatN<truncstorei8, SBN, GPR>;
+defm : StPatN<truncstorei16, SHN, GPR>;
+defm : StPatN<store, SWN, GPR>, Requires<[IsRV32]>;
 
-defm : StPatNFI<truncstorei8, SBN, GPR>;
-defm : StPatNFI<truncstorei16, SHN, GPR>;
-defm : StPatNFI<store, SWN, GPR>, Requires<[IsRV32]>;
+// defm : StPatNnoFI<truncstorei8, SB, GPR>;
+// defm : StPatNnoFI<truncstorei16, SH, GPR>;
+// defm : StPatNnoFI<store, SW, GPR>, Requires<[IsRV32]>;
+
+// defm : StPatNFI<truncstorei8, SBN, GPR>;
+// defm : StPatNFI<truncstorei16, SHN, GPR>;
+// defm : StPatNFI<store, SWN, GPR>, Requires<[IsRV32]>;
 
 /// Fences
 
@@ -1233,26 +1268,34 @@ def : PatGprGpr<riscv_sraw, SRAW>;
 // defm : LdPat<zextloadi32, LWU>;
 // defm : LdPat<load, LD>;
 
-defm : LdPatNnoFI<sextloadi32, LW>;
-defm : LdPatNnoFI<extloadi32, LW>;
-defm : LdPatNnoFI<zextloadi32, LWU>;
-defm : LdPatNnoFI<load, LD>;
+defm : LdPatN<sextloadi32, LWN>;
+defm : LdPatN<extloadi32, LWN>;
+defm : LdPatN<zextloadi32, LWUN>;
+defm : LdPatN<load, LDN>;
 
-defm : LdPatNFI<sextloadi32, LWN>;
-defm : LdPatNFI<extloadi32, LWN>;
-defm : LdPatNFI<zextloadi32, LWUN>;
-defm : LdPatNFI<load, LDN>;
+// defm : LdPatNnoFI<sextloadi32, LW>;
+// defm : LdPatNnoFI<extloadi32, LW>;
+// defm : LdPatNnoFI<zextloadi32, LWU>;
+// defm : LdPatNnoFI<load, LD>;
+
+// defm : LdPatNFI<sextloadi32, LWN>;
+// defm : LdPatNFI<extloadi32, LWN>;
+// defm : LdPatNFI<zextloadi32, LWUN>;
+// defm : LdPatNFI<load, LDN>;
 
 /// Stores
 
 // defm : StPat<truncstorei32, SW, GPR>;
 // defm : StPat<store, SD, GPR>;
 
-defm : StPatNnoFI<truncstorei32, SW, GPR>;
-defm : StPatNnoFI<store, SD, GPR>;
+defm : StPatN<truncstorei32, SWN, GPR>;
+defm : StPatN<store, SDN, GPR>;
 
-defm : StPatNFI<truncstorei32, SWN, GPR>;
-defm : StPatNFI<store, SDN, GPR>;
+// defm : StPatNnoFI<truncstorei32, SW, GPR>;
+// defm : StPatNnoFI<store, SD, GPR>;
+
+// defm : StPatNFI<truncstorei32, SWN, GPR>;
+// defm : StPatNFI<store, SDN, GPR>;
 } // Predicates = [IsRV64]
 
 /// readcyclecounter

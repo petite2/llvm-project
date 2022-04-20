@@ -161,7 +161,8 @@ bool RISCVExpandPseudo::expandLoadAddress(
   unsigned FlagsHi;
   if (MF->getTarget().isPositionIndependent()) {
     const auto &STI = MF->getSubtarget<RISCVSubtarget>();
-    SecondOpcode = STI.is64Bit() ? RISCV::LD : RISCV::LW;
+    // SecondOpcode = STI.is64Bit() ? RISCV::LD : RISCV::LW;
+    SecondOpcode = STI.is64Bit() ? RISCV::LDN : RISCV::LWN;
     FlagsHi = RISCVII::MO_GOT_HI;
   } else {
     SecondOpcode = RISCV::ADDI;
@@ -176,7 +177,8 @@ bool RISCVExpandPseudo::expandLoadTLSIEAddress(
   MachineFunction *MF = MBB.getParent();
 
   const auto &STI = MF->getSubtarget<RISCVSubtarget>();
-  unsigned SecondOpcode = STI.is64Bit() ? RISCV::LD : RISCV::LW;
+  // unsigned SecondOpcode = STI.is64Bit() ? RISCV::LD : RISCV::LW;
+  unsigned SecondOpcode = STI.is64Bit() ? RISCV::LDN : RISCV::LWN;
   return expandAuipcInstPair(MBB, MBBI, NextMBBI, RISCVII::MO_TLS_GOT_HI,
                              SecondOpcode);
 }

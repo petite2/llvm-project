@@ -2197,7 +2197,8 @@ void RISCVAsmParser::emitLoadAddress(MCInst &Inst, SMLoc IDLoc,
   unsigned SecondOpcode;
   RISCVMCExpr::VariantKind VKHi;
   if (ParserOptions.IsPicEnabled) {
-    SecondOpcode = isRV64() ? RISCV::LD : RISCV::LW;
+    // SecondOpcode = isRV64() ? RISCV::LD : RISCV::LW;
+    SecondOpcode = isRV64() ? RISCV::LDN : RISCV::LWN;
     VKHi = RISCVMCExpr::VK_RISCV_GOT_HI;
   } else {
     SecondOpcode = RISCV::ADDI;
@@ -2216,7 +2217,8 @@ void RISCVAsmParser::emitLoadTLSIEAddress(MCInst &Inst, SMLoc IDLoc,
   //             Lx rdest, %pcrel_lo(TmpLabel)(rdest)
   MCOperand DestReg = Inst.getOperand(0);
   const MCExpr *Symbol = Inst.getOperand(1).getExpr();
-  unsigned SecondOpcode = isRV64() ? RISCV::LD : RISCV::LW;
+  // unsigned SecondOpcode = isRV64() ? RISCV::LD : RISCV::LW;
+  unsigned SecondOpcode = isRV64() ? RISCV::LDN : RISCV::LWN;
   emitAuipcInstPair(DestReg, DestReg, Symbol, RISCVMCExpr::VK_RISCV_TLS_GOT_HI,
                     SecondOpcode, IDLoc, Out);
 }
