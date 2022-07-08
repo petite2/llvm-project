@@ -589,8 +589,13 @@ void RISCVDAGToDAGISel::doPeepholeLoadStoreADDI() {
     if (auto Const = dyn_cast<ConstantSDNode>(ImmOperand)) {
       int64_t Offset1 = Const->getSExtValue();
       int64_t CombinedOffset = Offset1 + Offset2;
-      if (IsNewMemOp && !isUIntN(offset_bits, CombinedOffset >> shift_bits))
-        continue;
+      if (IsNewMemOp) {
+        CombinedOffset = Offset1 + (Offset2 << shift_bits);
+        if (isUIntN(offset_bits, CombinedOffset >> shift_bits))
+          CombinedOffset = CombinedOffset >> shift_bits;
+        else
+          continue;
+      }
       if (!isInt<12>(CombinedOffset))
         continue;
       ImmOperand = CurDAG->getTargetConstant(CombinedOffset, SDLoc(ImmOperand),
@@ -606,8 +611,14 @@ void RISCVDAGToDAGISel::doPeepholeLoadStoreADDI() {
         continue;
       int64_t Offset1 = GA->getOffset();
       int64_t CombinedOffset = Offset1 + Offset2;
-      if (IsNewMemOp && !isUIntN(offset_bits, CombinedOffset >> shift_bits))
-        continue;
+      if (IsNewMemOp) {
+        // Do not merge global address to avoid symbol ref not an imm problem
+        /* CombinedOffset = Offset1 + (Offset2 << shift_bits);
+        if (isUIntN(offset_bits, CombinedOffset >> shift_bits))
+          CombinedOffset = CombinedOffset >> shift_bits;
+        else */
+          continue;
+      }
       ImmOperand = CurDAG->getTargetGlobalAddress(
           GA->getGlobal(), SDLoc(ImmOperand), ImmOperand.getValueType(),
           CombinedOffset, GA->getTargetFlags());
@@ -618,8 +629,14 @@ void RISCVDAGToDAGISel::doPeepholeLoadStoreADDI() {
         continue;
       int64_t Offset1 = CP->getOffset();
       int64_t CombinedOffset = Offset1 + Offset2;
-      if (IsNewMemOp && !isUIntN(offset_bits, CombinedOffset >> shift_bits))
-        continue;
+      if (IsNewMemOp) {
+        // Do not merge global address to avoid symbol ref not an imm problem
+        /* CombinedOffset = Offset1 + (Offset2 << shift_bits);
+        if (isUIntN(offset_bits, CombinedOffset >> shift_bits))
+          CombinedOffset = CombinedOffset >> shift_bits;
+        else */
+          continue;
+      }
       ImmOperand = CurDAG->getTargetConstantPool(
           CP->getConstVal(), ImmOperand.getValueType(), CP->getAlign(),
           CombinedOffset, CP->getTargetFlags());
@@ -634,12 +651,21 @@ void RISCVDAGToDAGISel::doPeepholeLoadStoreADDI() {
     LLVM_DEBUG(dbgs() << "\n");
 
     // Modify the offset operand of the load/store.
+    if (IsNewMemOp) {
+      if (BaseOpIdx == 0) // Load
+        CurDAG->UpdateNodeOperands(N, Base.getOperand(0), ImmOperand,
+                                   N->getOperand(2), N->getOperand(3));
+      else // Store
+        CurDAG->UpdateNodeOperands(N, N->getOperand(0), Base.getOperand(0),
+                                   ImmOperand, N->getOperand(3), N->getOperand(4));
+    } else {
     if (BaseOpIdx == 0) // Load
       CurDAG->UpdateNodeOperands(N, Base.getOperand(0), ImmOperand,
                                  N->getOperand(2));
     else // Store
       CurDAG->UpdateNodeOperands(N, N->getOperand(0), Base.getOperand(0),
                                  ImmOperand, N->getOperand(3));
+    }
 
     // The add-immediate may now be dead, in which case remove it.
     if (Base.getNode()->use_empty())
