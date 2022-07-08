@@ -209,8 +209,8 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   }
   if (is_labeled) {
     int label = MI.getOperand(FIOperandNum + 2).getImm();
-    assert(label == 0);
-    Offset += label << offset_bits;
+    assert(label == 60);
+    // Offset += label << offset_bits;
   }
 
   if (!isInt<32>(Offset)) {
@@ -258,9 +258,9 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     assert(((Offset & ((1 << shift_bits) - 1)) == 0) && "Aligned offset expected");
     Offset = Offset >> shift_bits;
   }
-  if (is_labeled) {
-    MI.getOperand(FIOperandNum + 2).ChangeToImmediate(0b111000); // The "Label" part can be set like this
-  }
+  // if (is_labeled) {
+  //   MI.getOperand(FIOperandNum + 2).ChangeToImmediate(0b111100); // The "Label" part can be set like this
+  // }
 
   MI.getOperand(FIOperandNum)
       .ChangeToRegister(FrameReg, false, false, FrameRegIsKill);

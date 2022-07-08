@@ -1093,15 +1093,23 @@ multiclass LdPat<PatFrag LoadOp, RVInst Inst> {
 // For new mem insts
 multiclass LdPatN<PatFrag LoadOp, RVInst Inst> {
   def : Pat<(LoadOp GPR:$rs1), (Inst GPR:$rs1, 0, 56)>;
-  def : Pat<(LoadOp AddrFI:$rs1), (Inst AddrFI:$rs1, 0, 56)>;
+  def : Pat<(LoadOp AddrFI:$rs1), (Inst AddrFI:$rs1, 0, 60)>;
   // def : Pat<(LoadOp (add GPR:$rs1, simm12:$imm12)),
   //           (Inst GPR:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
   def : Pat<(LoadOp (add GPR:$rs1, simm12:$imm12)),
             (Inst (ADDI GPR:$rs1, simm12:$imm12), 0, 56)>;
+  // def : Pat<(LoadOp (add AddrFI:$rs1, simm12:$imm12)),
+  //           (Inst AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+  // def : Pat<(LoadOp (IsOrAdd AddrFI:$rs1, simm12:$imm12)),
+  //           (Inst AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
   def : Pat<(LoadOp (add AddrFI:$rs1, simm12:$imm12)),
-            (Inst AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+            (Inst AddrFI:$rs1, simm12:$imm12, 60)>;
   def : Pat<(LoadOp (IsOrAdd AddrFI:$rs1, simm12:$imm12)),
-            (Inst AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+            (Inst AddrFI:$rs1, simm12:$imm12, 60)>;
+  // def : Pat<(LoadOp (add AddrFI:$rs1, simm12:$imm12)),
+  //           (Inst (ADDI AddrFI:$rs1, simm12:$imm12), 0, 0)>;
+  // def : Pat<(LoadOp (IsOrAdd AddrFI:$rs1, simm12:$imm12)),
+  //           (Inst (ADDI AddrFI:$rs1, simm12:$imm12), 0, 0)>;
 }
 multiclass LdPatNnoFI<PatFrag LoadOp, RVInst Inst> {
   def : Pat<(LoadOp GPR:$rs1), (Inst GPR:$rs1, 0)>;
@@ -1164,15 +1172,19 @@ multiclass StPat<PatFrag StoreOp, RVInst Inst, RegisterClass StTy> {
 // For new mem insts
 multiclass StPatN<PatFrag StoreOp, RVInst Inst, RegisterClass StTy> {
   def : Pat<(StoreOp StTy:$rs2, GPR:$rs1), (Inst StTy:$rs2, GPR:$rs1, 0, 56)>;
-  def : Pat<(StoreOp StTy:$rs2, AddrFI:$rs1), (Inst StTy:$rs2, AddrFI:$rs1, 0, 56)>;
+  def : Pat<(StoreOp StTy:$rs2, AddrFI:$rs1), (Inst StTy:$rs2, AddrFI:$rs1, 0, 60)>;
   // def : Pat<(StoreOp StTy:$rs2, (add GPR:$rs1, simm12:$imm12)),
   //           (Inst StTy:$rs2, GPR:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
   def : Pat<(StoreOp StTy:$rs2, (add GPR:$rs1, simm12:$imm12)),
             (Inst StTy:$rs2, (ADDI GPR:$rs1, simm12:$imm12), 0, 56)>;
+  // def : Pat<(StoreOp StTy:$rs2, (add AddrFI:$rs1, simm12:$imm12)),
+  //           (Inst StTy:$rs2, AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+  // def : Pat<(StoreOp StTy:$rs2, (IsOrAdd AddrFI:$rs1, simm12:$imm12)),
+  //           (Inst StTy:$rs2, AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
   def : Pat<(StoreOp StTy:$rs2, (add AddrFI:$rs1, simm12:$imm12)),
-            (Inst StTy:$rs2, AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+            (Inst StTy:$rs2, AddrFI:$rs1, simm12:$imm12, 60)>;
   def : Pat<(StoreOp StTy:$rs2, (IsOrAdd AddrFI:$rs1, simm12:$imm12)),
-            (Inst StTy:$rs2, AddrFI:$rs1, (LO6 imm:$imm12), (LO6To12 imm:$imm12))>;
+            (Inst StTy:$rs2, AddrFI:$rs1, simm12:$imm12, 60)>;
 }
 multiclass StPatNnoFI<PatFrag StoreOp, RVInst Inst, RegisterClass StTy> {
   def : Pat<(StoreOp StTy:$rs2, GPR:$rs1), (Inst StTy:$rs2, GPR:$rs1, 0)>;

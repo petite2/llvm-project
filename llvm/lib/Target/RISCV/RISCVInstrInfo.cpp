@@ -148,7 +148,7 @@ void RISCVInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
         .addReg(SrcReg, getKillRegState(IsKill))
         .addFrameIndex(FI)
         .addImm(0)
-        .addImm(0);
+        .addImm(60);
   } else
   BuildMI(MBB, I, DL, get(Opcode))
       .addReg(SrcReg, getKillRegState(IsKill))
@@ -179,7 +179,7 @@ void RISCVInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
     llvm_unreachable("Can't load this register from stack slot");
 
   if (Opcode == RISCV::LDN || Opcode == RISCV::LWN) {
-    BuildMI(MBB, I, DL, get(Opcode), DstReg).addFrameIndex(FI).addImm(0).addImm(0);
+    BuildMI(MBB, I, DL, get(Opcode), DstReg).addFrameIndex(FI).addImm(0).addImm(60);
   } else
   BuildMI(MBB, I, DL, get(Opcode), DstReg).addFrameIndex(FI).addImm(0);
 }
