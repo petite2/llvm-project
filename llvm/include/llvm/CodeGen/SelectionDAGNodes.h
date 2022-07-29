@@ -628,6 +628,9 @@ private:
   // this ordering.
   unsigned IROrder;
 
+  // The color label for memory access nodes
+  int ColorLabel;
+
   /// Source line information.
   DebugLoc debugLoc;
 
@@ -739,6 +742,12 @@ public:
 
   /// Set the node ordering.
   void setIROrder(unsigned Order) { IROrder = Order; }
+
+  /// Return the node color label.
+  int getColorLabel() const { return ColorLabel; }
+
+  /// Set the node color label.
+  void setColorLabel(int Label) { ColorLabel = Label; }
 
   /// Return the source location info.
   const DebugLoc &getDebugLoc() const { return debugLoc; }
@@ -1088,7 +1097,7 @@ protected:
   /// storage. To add operands, see SelectionDAG::createOperands.
   SDNode(unsigned Opc, unsigned Order, DebugLoc dl, SDVTList VTs)
       : NodeType(Opc), ValueList(VTs.VTs), NumValues(VTs.NumVTs),
-        IROrder(Order), debugLoc(std::move(dl)) {
+        IROrder(Order), ColorLabel(-1), debugLoc(std::move(dl)) {
     memset(&RawSDNodeBits, 0, sizeof(RawSDNodeBits));
     assert(debugLoc.hasTrivialDestructor() && "Expected trivial destructor");
     assert(NumValues == VTs.NumVTs &&

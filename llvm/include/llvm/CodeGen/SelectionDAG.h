@@ -1181,38 +1181,44 @@ public:
                   MachinePointerInfo PtrInfo, MaybeAlign Alignment,
                   MachineMemOperand::Flags MMOFlags = MachineMemOperand::MONone,
                   const AAMDNodes &AAInfo = AAMDNodes(),
-                  const MDNode *Ranges = nullptr);
+                  const MDNode *Ranges = nullptr, 
+                  int ColorLabel = -1);
   /// FIXME: Remove once transition to Align is over.
   inline SDValue
   getLoad(EVT VT, const SDLoc &dl, SDValue Chain, SDValue Ptr,
           MachinePointerInfo PtrInfo, unsigned Alignment = 0,
           MachineMemOperand::Flags MMOFlags = MachineMemOperand::MONone,
           const AAMDNodes &AAInfo = AAMDNodes(),
-          const MDNode *Ranges = nullptr) {
+          const MDNode *Ranges = nullptr, 
+          int ColorLabel = -1) {
     return getLoad(VT, dl, Chain, Ptr, PtrInfo, MaybeAlign(Alignment), MMOFlags,
-                   AAInfo, Ranges);
+                   AAInfo, Ranges, ColorLabel);
   }
   SDValue getLoad(EVT VT, const SDLoc &dl, SDValue Chain, SDValue Ptr,
-                  MachineMemOperand *MMO);
+                  MachineMemOperand *MMO, 
+                  int ColorLabel = -1);
   SDValue
   getExtLoad(ISD::LoadExtType ExtType, const SDLoc &dl, EVT VT, SDValue Chain,
              SDValue Ptr, MachinePointerInfo PtrInfo, EVT MemVT,
              MaybeAlign Alignment,
              MachineMemOperand::Flags MMOFlags = MachineMemOperand::MONone,
-             const AAMDNodes &AAInfo = AAMDNodes());
+             const AAMDNodes &AAInfo = AAMDNodes(), 
+             int ColorLabel = -1);
   /// FIXME: Remove once transition to Align is over.
   inline SDValue
   getExtLoad(ISD::LoadExtType ExtType, const SDLoc &dl, EVT VT, SDValue Chain,
              SDValue Ptr, MachinePointerInfo PtrInfo, EVT MemVT,
              unsigned Alignment = 0,
              MachineMemOperand::Flags MMOFlags = MachineMemOperand::MONone,
-             const AAMDNodes &AAInfo = AAMDNodes()) {
+             const AAMDNodes &AAInfo = AAMDNodes(), 
+             int ColorLabel = -1) {
     return getExtLoad(ExtType, dl, VT, Chain, Ptr, PtrInfo, MemVT,
-                      MaybeAlign(Alignment), MMOFlags, AAInfo);
+                      MaybeAlign(Alignment), MMOFlags, AAInfo, ColorLabel);
   }
   SDValue getExtLoad(ISD::LoadExtType ExtType, const SDLoc &dl, EVT VT,
                      SDValue Chain, SDValue Ptr, EVT MemVT,
-                     MachineMemOperand *MMO);
+                     MachineMemOperand *MMO, 
+                     int ColorLabel = -1);
   SDValue getIndexedLoad(SDValue OrigLoad, const SDLoc &dl, SDValue Base,
                          SDValue Offset, ISD::MemIndexedMode AM);
   SDValue getLoad(ISD::MemIndexedMode AM, ISD::LoadExtType ExtType, EVT VT,
@@ -1220,18 +1226,20 @@ public:
                   MachinePointerInfo PtrInfo, EVT MemVT, Align Alignment,
                   MachineMemOperand::Flags MMOFlags = MachineMemOperand::MONone,
                   const AAMDNodes &AAInfo = AAMDNodes(),
-                  const MDNode *Ranges = nullptr);
+                  const MDNode *Ranges = nullptr, 
+                  int ColorLabel = -1);
   inline SDValue
   getLoad(ISD::MemIndexedMode AM, ISD::LoadExtType ExtType, EVT VT,
           const SDLoc &dl, SDValue Chain, SDValue Ptr, SDValue Offset,
           MachinePointerInfo PtrInfo, EVT MemVT, MaybeAlign Alignment,
           MachineMemOperand::Flags MMOFlags = MachineMemOperand::MONone,
           const AAMDNodes &AAInfo = AAMDNodes(),
-          const MDNode *Ranges = nullptr) {
+          const MDNode *Ranges = nullptr, 
+          int ColorLabel = -1) {
     // Ensures that codegen never sees a None Alignment.
     return getLoad(AM, ExtType, VT, dl, Chain, Ptr, Offset, PtrInfo, MemVT,
                    Alignment.getValueOr(getEVTAlign(MemVT)), MMOFlags, AAInfo,
-                   Ranges);
+                   Ranges, ColorLabel);
   }
   /// FIXME: Remove once transition to Align is over.
   inline SDValue
@@ -1240,13 +1248,15 @@ public:
           MachinePointerInfo PtrInfo, EVT MemVT, unsigned Alignment = 0,
           MachineMemOperand::Flags MMOFlags = MachineMemOperand::MONone,
           const AAMDNodes &AAInfo = AAMDNodes(),
-          const MDNode *Ranges = nullptr) {
+          const MDNode *Ranges = nullptr, 
+          int ColorLabel = -1) {
     return getLoad(AM, ExtType, VT, dl, Chain, Ptr, Offset, PtrInfo, MemVT,
-                   MaybeAlign(Alignment), MMOFlags, AAInfo, Ranges);
+                   MaybeAlign(Alignment), MMOFlags, AAInfo, Ranges, ColorLabel);
   }
   SDValue getLoad(ISD::MemIndexedMode AM, ISD::LoadExtType ExtType, EVT VT,
                   const SDLoc &dl, SDValue Chain, SDValue Ptr, SDValue Offset,
-                  EVT MemVT, MachineMemOperand *MMO);
+                  EVT MemVT, MachineMemOperand *MMO, 
+                  int ColorLabel = -1);
 
   /// Helper function to build ISD::STORE nodes.
   ///
@@ -1257,52 +1267,61 @@ public:
   getStore(SDValue Chain, const SDLoc &dl, SDValue Val, SDValue Ptr,
            MachinePointerInfo PtrInfo, Align Alignment,
            MachineMemOperand::Flags MMOFlags = MachineMemOperand::MONone,
-           const AAMDNodes &AAInfo = AAMDNodes());
+           const AAMDNodes &AAInfo = AAMDNodes(), 
+           int ColorLabel = -1);
   inline SDValue
   getStore(SDValue Chain, const SDLoc &dl, SDValue Val, SDValue Ptr,
            MachinePointerInfo PtrInfo, MaybeAlign Alignment,
            MachineMemOperand::Flags MMOFlags = MachineMemOperand::MONone,
-           const AAMDNodes &AAInfo = AAMDNodes()) {
+           const AAMDNodes &AAInfo = AAMDNodes(), 
+           int ColorLabel = -1) {
     return getStore(Chain, dl, Val, Ptr, PtrInfo,
                     Alignment.getValueOr(getEVTAlign(Val.getValueType())),
-                    MMOFlags, AAInfo);
+                    MMOFlags, AAInfo, ColorLabel);
   }
   /// FIXME: Remove once transition to Align is over.
   inline SDValue
   getStore(SDValue Chain, const SDLoc &dl, SDValue Val, SDValue Ptr,
            MachinePointerInfo PtrInfo, unsigned Alignment = 0,
            MachineMemOperand::Flags MMOFlags = MachineMemOperand::MONone,
-           const AAMDNodes &AAInfo = AAMDNodes()) {
+           const AAMDNodes &AAInfo = AAMDNodes(), 
+           int ColorLabel = -1) {
     return getStore(Chain, dl, Val, Ptr, PtrInfo, MaybeAlign(Alignment),
-                    MMOFlags, AAInfo);
+                    MMOFlags, AAInfo, ColorLabel);
   }
   SDValue getStore(SDValue Chain, const SDLoc &dl, SDValue Val, SDValue Ptr,
-                   MachineMemOperand *MMO);
+                   MachineMemOperand *MMO, 
+                   int ColorLabel = -1);
   SDValue
   getTruncStore(SDValue Chain, const SDLoc &dl, SDValue Val, SDValue Ptr,
                 MachinePointerInfo PtrInfo, EVT SVT, Align Alignment,
                 MachineMemOperand::Flags MMOFlags = MachineMemOperand::MONone,
-                const AAMDNodes &AAInfo = AAMDNodes());
+                const AAMDNodes &AAInfo = AAMDNodes(), 
+                int ColorLabel = -1);
   inline SDValue
   getTruncStore(SDValue Chain, const SDLoc &dl, SDValue Val, SDValue Ptr,
                 MachinePointerInfo PtrInfo, EVT SVT, MaybeAlign Alignment,
                 MachineMemOperand::Flags MMOFlags = MachineMemOperand::MONone,
-                const AAMDNodes &AAInfo = AAMDNodes()) {
+                const AAMDNodes &AAInfo = AAMDNodes(), 
+                int ColorLabel = -1) {
     return getTruncStore(Chain, dl, Val, Ptr, PtrInfo, SVT,
                          Alignment.getValueOr(getEVTAlign(SVT)), MMOFlags,
-                         AAInfo);
+                         AAInfo, ColorLabel);
   }
   /// FIXME: Remove once transition to Align is over.
   inline SDValue
   getTruncStore(SDValue Chain, const SDLoc &dl, SDValue Val, SDValue Ptr,
                 MachinePointerInfo PtrInfo, EVT SVT, unsigned Alignment = 0,
                 MachineMemOperand::Flags MMOFlags = MachineMemOperand::MONone,
-                const AAMDNodes &AAInfo = AAMDNodes()) {
+                const AAMDNodes &AAInfo = AAMDNodes(), 
+                int ColorLabel = -1) {
     return getTruncStore(Chain, dl, Val, Ptr, PtrInfo, SVT,
-                         MaybeAlign(Alignment), MMOFlags, AAInfo);
+                         MaybeAlign(Alignment), MMOFlags, AAInfo, 
+                         ColorLabel);
   }
   SDValue getTruncStore(SDValue Chain, const SDLoc &dl, SDValue Val,
-                        SDValue Ptr, EVT SVT, MachineMemOperand *MMO);
+                        SDValue Ptr, EVT SVT, MachineMemOperand *MMO, 
+                        int ColorLabel = -1);
   SDValue getIndexedStore(SDValue OrigStore, const SDLoc &dl, SDValue Base,
                           SDValue Offset, ISD::MemIndexedMode AM);
 
