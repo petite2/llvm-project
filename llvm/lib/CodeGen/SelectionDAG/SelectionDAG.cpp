@@ -6927,7 +6927,8 @@ SDValue SelectionDAG::getLoad(ISD::MemIndexedMode AM, ISD::LoadExtType ExtType,
                               MachinePointerInfo PtrInfo, EVT MemVT,
                               Align Alignment,
                               MachineMemOperand::Flags MMOFlags,
-                              const AAMDNodes &AAInfo, const MDNode *Ranges) {
+                              const AAMDNodes &AAInfo, const MDNode *Ranges, 
+                              int ColorLabel) {
   assert(Chain.getValueType() == MVT::Other &&
         "Invalid chain type");
 
@@ -6942,13 +6943,14 @@ SDValue SelectionDAG::getLoad(ISD::MemIndexedMode AM, ISD::LoadExtType ExtType,
   MachineFunction &MF = getMachineFunction();
   MachineMemOperand *MMO = MF.getMachineMemOperand(PtrInfo, MMOFlags, Size,
                                                    Alignment, AAInfo, Ranges);
-  return getLoad(AM, ExtType, VT, dl, Chain, Ptr, Offset, MemVT, MMO);
+  return getLoad(AM, ExtType, VT, dl, Chain, Ptr, Offset, MemVT, MMO, ColorLabel);
 }
 
 SDValue SelectionDAG::getLoad(ISD::MemIndexedMode AM, ISD::LoadExtType ExtType,
                               EVT VT, const SDLoc &dl, SDValue Chain,
                               SDValue Ptr, SDValue Offset, EVT MemVT,
-                              MachineMemOperand *MMO) {
+                              MachineMemOperand *MMO, 
+                              int ColorLabel) {
   if (VT == MemVT) {
     ExtType = ISD::NON_EXTLOAD;
   } else if (ExtType == ISD::NON_EXTLOAD) {
@@ -6985,6 +6987,11 @@ SDValue SelectionDAG::getLoad(ISD::MemIndexedMode AM, ISD::LoadExtType ExtType,
   }
   auto *N = newSDNode<LoadSDNode>(dl.getIROrder(), dl.getDebugLoc(), VTs, AM,
                                   ExtType, MemVT, MMO);
+  if (ColorLabel >= 0) {
+    N->setColorLabel(ColorLabel);
+  } else {
+    assert(false); // To catch missed cases
+  }
   createOperands(N, Ops);
 
   CSEMap.InsertNode(N, IP);
@@ -6998,17 +7005,19 @@ SDValue SelectionDAG::getLoad(EVT VT, const SDLoc &dl, SDValue Chain,
                               SDValue Ptr, MachinePointerInfo PtrInfo,
                               MaybeAlign Alignment,
                               MachineMemOperand::Flags MMOFlags,
-                              const AAMDNodes &AAInfo, const MDNode *Ranges) {
+                              const AAMDNodes &AAInfo, const MDNode *Ranges, 
+                              int ColorLabel) {
   SDValue Undef = getUNDEF(Ptr.getValueType());
   return getLoad(ISD::UNINDEXED, ISD::NON_EXTLOAD, VT, dl, Chain, Ptr, Undef,
-                 PtrInfo, VT, Alignment, MMOFlags, AAInfo, Ranges);
+                 PtrInfo, VT, Alignment, MMOFlags, AAInfo, Ranges, ColorLabel);
 }
 
 SDValue SelectionDAG::getLoad(EVT VT, const SDLoc &dl, SDValue Chain,
-                              SDValue Ptr, MachineMemOperand *MMO) {
+                              SDValue Ptr, MachineMemOperand *MMO, 
+                              int ColorLabel) {
   SDValue Undef = getUNDEF(Ptr.getValueType());
   return getLoad(ISD::UNINDEXED, ISD::NON_EXTLOAD, VT, dl, Chain, Ptr, Undef,
-                 VT, MMO);
+                 VT, MMO, ColorLabel);
 }
 
 SDValue SelectionDAG::getExtLoad(ISD::LoadExtType ExtType, const SDLoc &dl,
@@ -7016,18 +7025,22 @@ SDValue SelectionDAG::getExtLoad(ISD::LoadExtType ExtType, const SDLoc &dl,
                                  MachinePointerInfo PtrInfo, EVT MemVT,
                                  MaybeAlign Alignment,
                                  MachineMemOperand::Flags MMOFlags,
-                                 const AAMDNodes &AAInfo) {
+                                 const AAMDNodes &AAInfo, 
+                                 int ColorLabel) {
   SDValue Undef = getUNDEF(Ptr.getValueType());
   return getLoad(ISD::UNINDEXED, ExtType, VT, dl, Chain, Ptr, Undef, PtrInfo,
-                 MemVT, Alignment, MMOFlags, AAInfo);
+                 MemVT, Alignment, MMOFlags, AAInfo, 
+                 nullptr, // For ranges
+                 ColorLabel);
 }
 
 SDValue SelectionDAG::getExtLoad(ISD::LoadExtType ExtType, const SDLoc &dl,
                                  EVT VT, SDValue Chain, SDValue Ptr, EVT MemVT,
-                                 MachineMemOperand *MMO) {
+                                 MachineMemOperand *MMO, 
+                                 int ColorLabel) {
   SDValue Undef = getUNDEF(Ptr.getValueType());
   return getLoad(ISD::UNINDEXED, ExtType, VT, dl, Chain, Ptr, Undef,
-                 MemVT, MMO);
+                 MemVT, MMO, ColorLabel);
 }
 
 SDValue SelectionDAG::getIndexedLoad(SDValue OrigLoad, const SDLoc &dl,
@@ -7042,14 +7055,17 @@ SDValue SelectionDAG::getIndexedLoad(SDValue OrigLoad, const SDLoc &dl,
   return getLoad(AM, LD->getExtensionType(), OrigLoad.getValueType(), dl,
                  LD->getChain(), Base, Offset, LD->getPointerInfo(),
                  LD->getMemoryVT(), LD->getAlignment(), MMOFlags,
-                 LD->getAAInfo());
+                 LD->getAAInfo(), 
+                 nullptr, // For ranges
+                 LD->getColorLabel());
 }
 
 SDValue SelectionDAG::getStore(SDValue Chain, const SDLoc &dl, SDValue Val,
                                SDValue Ptr, MachinePointerInfo PtrInfo,
                                Align Alignment,
                                MachineMemOperand::Flags MMOFlags,
-                               const AAMDNodes &AAInfo) {
+                               const AAMDNodes &AAInfo, 
+                               int ColorLabel) {
   assert(Chain.getValueType() == MVT::Other && "Invalid chain type");
 
   MMOFlags |= MachineMemOperand::MOStore;
@@ -7063,11 +7079,12 @@ SDValue SelectionDAG::getStore(SDValue Chain, const SDLoc &dl, SDValue Val,
       MemoryLocation::getSizeOrUnknown(Val.getValueType().getStoreSize());
   MachineMemOperand *MMO =
       MF.getMachineMemOperand(PtrInfo, MMOFlags, Size, Alignment, AAInfo);
-  return getStore(Chain, dl, Val, Ptr, MMO);
+  return getStore(Chain, dl, Val, Ptr, MMO, ColorLabel);
 }
 
 SDValue SelectionDAG::getStore(SDValue Chain, const SDLoc &dl, SDValue Val,
-                               SDValue Ptr, MachineMemOperand *MMO) {
+                               SDValue Ptr, MachineMemOperand *MMO, 
+                               int ColorLabel) {
   assert(Chain.getValueType() == MVT::Other &&
         "Invalid chain type");
   EVT VT = Val.getValueType();
@@ -7087,6 +7104,11 @@ SDValue SelectionDAG::getStore(SDValue Chain, const SDLoc &dl, SDValue Val,
   }
   auto *N = newSDNode<StoreSDNode>(dl.getIROrder(), dl.getDebugLoc(), VTs,
                                    ISD::UNINDEXED, false, VT, MMO);
+  if (ColorLabel >= 0) {
+    N->setColorLabel(ColorLabel);
+  } else {
+    assert(false); // To catch missed cases
+  }
   createOperands(N, Ops);
 
   CSEMap.InsertNode(N, IP);
@@ -7100,7 +7122,8 @@ SDValue SelectionDAG::getTruncStore(SDValue Chain, const SDLoc &dl, SDValue Val,
                                     SDValue Ptr, MachinePointerInfo PtrInfo,
                                     EVT SVT, Align Alignment,
                                     MachineMemOperand::Flags MMOFlags,
-                                    const AAMDNodes &AAInfo) {
+                                    const AAMDNodes &AAInfo, 
+                                    int ColorLabel) {
   assert(Chain.getValueType() == MVT::Other &&
         "Invalid chain type");
 
@@ -7113,12 +7136,13 @@ SDValue SelectionDAG::getTruncStore(SDValue Chain, const SDLoc &dl, SDValue Val,
   MachineFunction &MF = getMachineFunction();
   MachineMemOperand *MMO = MF.getMachineMemOperand(
       PtrInfo, MMOFlags, SVT.getStoreSize(), Alignment, AAInfo);
-  return getTruncStore(Chain, dl, Val, Ptr, SVT, MMO);
+  return getTruncStore(Chain, dl, Val, Ptr, SVT, MMO, ColorLabel);
 }
 
 SDValue SelectionDAG::getTruncStore(SDValue Chain, const SDLoc &dl, SDValue Val,
                                     SDValue Ptr, EVT SVT,
-                                    MachineMemOperand *MMO) {
+                                    MachineMemOperand *MMO, 
+                                    int ColorLabel) {
   EVT VT = Val.getValueType();
 
   assert(Chain.getValueType() == MVT::Other &&
@@ -7152,6 +7176,11 @@ SDValue SelectionDAG::getTruncStore(SDValue Chain, const SDLoc &dl, SDValue Val,
   }
   auto *N = newSDNode<StoreSDNode>(dl.getIROrder(), dl.getDebugLoc(), VTs,
                                    ISD::UNINDEXED, true, SVT, MMO);
+  if (ColorLabel >= 0) {
+    N->setColorLabel(ColorLabel);
+  } else {
+    assert(false); // To catch missed cases
+  }
   createOperands(N, Ops);
 
   CSEMap.InsertNode(N, IP);
@@ -7180,6 +7209,7 @@ SDValue SelectionDAG::getIndexedStore(SDValue OrigStore, const SDLoc &dl,
   auto *N = newSDNode<StoreSDNode>(dl.getIROrder(), dl.getDebugLoc(), VTs, AM,
                                    ST->isTruncatingStore(), ST->getMemoryVT(),
                                    ST->getMemOperand());
+  N->setColorLabel(ST->getColorLabel());
   createOperands(N, Ops);
 
   CSEMap.InsertNode(N, IP);

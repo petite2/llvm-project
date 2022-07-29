@@ -3962,6 +3962,12 @@ void SelectionDAGBuilder::visitLoad(const LoadInst &I) {
   AAMDNodes AAInfo;
   I.getAAMetadata(AAInfo);
   const MDNode *Ranges = I.getMetadata(LLVMContext::MD_range);
+  // Extract color label annotation metadata here
+  int ColorLabel = -1;
+  MDNode * ColorLabelMDNode = I.getMetadata("annotation");
+  if (ColorLabelMDNode) {
+    ColorLabel = mdconst::dyn_extract<ConstantInt>(ColorLabelMDNode->getOperand(0))->getZExtValue();
+  }
 
   SmallVector<EVT, 4> ValueVTs, MemVTs;
   SmallVector<uint64_t, 4> Offsets;
@@ -4031,7 +4037,8 @@ void SelectionDAGBuilder::visitLoad(const LoadInst &I) {
 
     SDValue L = DAG.getLoad(MemVTs[i], dl, Root, A,
                             MachinePointerInfo(SV, Offsets[i]), Alignment,
-                            MMOFlags, AAInfo, Ranges);
+                            MMOFlags, AAInfo, Ranges, 
+                            ColorLabel); // Set color label metadata to SDValue here
     Chains[ChainI] = L.getValue(1);
 
     if (MemVTs[i] != ValueVTs[i])
@@ -4153,6 +4160,12 @@ void SelectionDAGBuilder::visitStore(const StoreInst &I) {
   Align Alignment = I.getAlign();
   AAMDNodes AAInfo;
   I.getAAMetadata(AAInfo);
+  // Extract color label annotation metadata here
+  int ColorLabel = -1;
+  MDNode * ColorLabelMDNode = I.getMetadata("annotation");
+  if (ColorLabelMDNode) {
+    ColorLabel = mdconst::dyn_extract<ConstantInt>(ColorLabelMDNode->getOperand(0))->getZExtValue();
+  }
 
   auto MMOFlags = TLI.getStoreMemOperandFlags(I, DAG.getDataLayout());
 
@@ -4176,7 +4189,8 @@ void SelectionDAGBuilder::visitStore(const StoreInst &I) {
       Val = DAG.getPtrExtOrTrunc(Val, dl, MemVTs[i]);
     SDValue St =
         DAG.getStore(Root, dl, Val, Add, MachinePointerInfo(PtrV, Offsets[i]),
-                     Alignment, MMOFlags, AAInfo);
+                     Alignment, MMOFlags, AAInfo, 
+                     ColorLabel); // Set color label metadata to SDValue here
     Chains[ChainI] = St;
   }
 
