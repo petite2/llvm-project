@@ -529,7 +529,8 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
              "Can only promote stores to same size type");
       Value = DAG.getNode(ISD::BITCAST, dl, NVT, Value);
       SDValue Result = DAG.getStore(Chain, dl, Value, Ptr, ST->getPointerInfo(),
-                                    ST->getOriginalAlign(), MMOFlags, AAInfo);
+                                    ST->getOriginalAlign(), MMOFlags, AAInfo, 
+                                    ST->getColorLabel()); // Attempt to pass color label
       ReplaceNode(SDValue(Node, 0), Result);
       break;
     }
@@ -552,7 +553,8 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
     Value = DAG.getZeroExtendInReg(Value, dl, StVT);
     SDValue Result =
         DAG.getTruncStore(Chain, dl, Value, Ptr, ST->getPointerInfo(), NVT,
-                          ST->getOriginalAlign(), MMOFlags, AAInfo);
+                          ST->getOriginalAlign(), MMOFlags, AAInfo, 
+                                    ST->getColorLabel()); // Attempt to pass color label
     ReplaceNode(SDValue(Node, 0), Result);
   } else if (StWidth & (StWidth - 1)) {
     // If not storing a power-of-2 number of bits, expand as two stores.
@@ -574,7 +576,8 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
       // TRUNCSTORE:i24 X -> TRUNCSTORE:i16 X, TRUNCSTORE@+2:i8 (srl X, 16)
       // Store the bottom RoundWidth bits.
       Lo = DAG.getTruncStore(Chain, dl, Value, Ptr, ST->getPointerInfo(),
-                             RoundVT, ST->getOriginalAlign(), MMOFlags, AAInfo);
+                             RoundVT, ST->getOriginalAlign(), MMOFlags, AAInfo, 
+                                    ST->getColorLabel()); // Attempt to pass color label
 
       // Store the remaining ExtraWidth bits.
       IncrementSize = RoundWidth / 8;
@@ -585,7 +588,8 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
                           TLI.getShiftAmountTy(Value.getValueType(), DL)));
       Hi = DAG.getTruncStore(Chain, dl, Hi, Ptr,
                              ST->getPointerInfo().getWithOffset(IncrementSize),
-                             ExtraVT, ST->getOriginalAlign(), MMOFlags, AAInfo);
+                             ExtraVT, ST->getOriginalAlign(), MMOFlags, AAInfo, 
+                                    ST->getColorLabel()); // Attempt to pass color label
     } else {
       // Big endian - avoid unaligned stores.
       // TRUNCSTORE:i24 X -> TRUNCSTORE:i16 (srl X, 8), TRUNCSTORE@+2:i8 X
@@ -595,7 +599,8 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
           DAG.getConstant(ExtraWidth, dl,
                           TLI.getShiftAmountTy(Value.getValueType(), DL)));
       Hi = DAG.getTruncStore(Chain, dl, Hi, Ptr, ST->getPointerInfo(), RoundVT,
-                             ST->getOriginalAlign(), MMOFlags, AAInfo);
+                             ST->getOriginalAlign(), MMOFlags, AAInfo, 
+                                    ST->getColorLabel()); // Attempt to pass color label
 
       // Store the remaining ExtraWidth bits.
       IncrementSize = RoundWidth / 8;
@@ -604,7 +609,8 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
                                         Ptr.getValueType()));
       Lo = DAG.getTruncStore(Chain, dl, Value, Ptr,
                              ST->getPointerInfo().getWithOffset(IncrementSize),
-                             ExtraVT, ST->getOriginalAlign(), MMOFlags, AAInfo);
+                             ExtraVT, ST->getOriginalAlign(), MMOFlags, AAInfo, 
+                                    ST->getColorLabel()); // Attempt to pass color label
     }
 
     // The order of the stores doesn't matter.
@@ -640,7 +646,8 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
       if (TLI.isTypeLegal(StVT)) {
         Value = DAG.getNode(ISD::TRUNCATE, dl, StVT, Value);
         Result = DAG.getStore(Chain, dl, Value, Ptr, ST->getPointerInfo(),
-                              ST->getOriginalAlign(), MMOFlags, AAInfo);
+                              ST->getOriginalAlign(), MMOFlags, AAInfo, 
+                                    ST->getColorLabel()); // Attempt to pass color label
       } else {
         // The in-memory type isn't legal. Truncate to the type it would promote
         // to, and then do a truncstore.
@@ -649,7 +656,8 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
                             Value);
         Result =
             DAG.getTruncStore(Chain, dl, Value, Ptr, ST->getPointerInfo(), StVT,
-                              ST->getOriginalAlign(), MMOFlags, AAInfo);
+                              ST->getOriginalAlign(), MMOFlags, AAInfo, 
+                                    ST->getColorLabel()); // Attempt to pass color label
       }
 
       ReplaceNode(SDValue(Node, 0), Result);

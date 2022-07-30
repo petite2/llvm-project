@@ -6860,7 +6860,8 @@ SDValue TargetLowering::scalarizeVectorStore(StoreSDNode *ST,
 
     return DAG.getStore(Chain, SL, CurrVal, BasePtr, ST->getPointerInfo(),
                         ST->getAlignment(), ST->getMemOperand()->getFlags(),
-                        ST->getAAInfo());
+                        ST->getAAInfo(), 
+                             ST->getColorLabel()); // Attempt to pass color label);
   }
 
   // Store Stride in bytes
@@ -6879,7 +6880,8 @@ SDValue TargetLowering::scalarizeVectorStore(StoreSDNode *ST,
     SDValue Store = DAG.getTruncStore(
         Chain, SL, Elt, Ptr, ST->getPointerInfo().getWithOffset(Idx * Stride),
         MemSclVT, MinAlign(ST->getAlignment(), Idx * Stride),
-        ST->getMemOperand()->getFlags(), ST->getAAInfo());
+        ST->getMemOperand()->getFlags(), ST->getAAInfo(), 
+                             ST->getColorLabel()); // Attempt to pass color label);
 
     Stores.push_back(Store);
   }
@@ -7066,7 +7068,9 @@ SDValue TargetLowering::expandUnalignedStore(StoreSDNode *ST,
       // FIXME: Does not handle truncating floating point stores!
       SDValue Result = DAG.getNode(ISD::BITCAST, dl, intVT, Val);
       Result = DAG.getStore(Chain, dl, Result, Ptr, ST->getPointerInfo(),
-                            Alignment, ST->getMemOperand()->getFlags());
+                            Alignment, ST->getMemOperand()->getFlags(), 
+                            AAMDNodes(), // Default for AAInfo field
+                             ST->getColorLabel()); // Attempt to pass color label);
       return Result;
     }
     // Do a (aligned) store to a stack slot, then copy from the stack slot
@@ -7105,7 +7109,9 @@ SDValue TargetLowering::expandUnalignedStore(StoreSDNode *ST,
       Stores.push_back(DAG.getStore(Load.getValue(1), dl, Load, Ptr,
                                     ST->getPointerInfo().getWithOffset(Offset),
                                     MinAlign(ST->getAlignment(), Offset),
-                                    ST->getMemOperand()->getFlags()));
+                                    ST->getMemOperand()->getFlags(), 
+                            AAMDNodes(), // Default for AAInfo field
+                             ST->getColorLabel())); // Attempt to pass color label););
       // Increment the pointers.
       Offset += RegBytes;
       StackPtr = DAG.getObjectPtrOffset(dl, StackPtr, StackPtrIncrement);
@@ -7127,7 +7133,8 @@ SDValue TargetLowering::expandUnalignedStore(StoreSDNode *ST,
         DAG.getTruncStore(Load.getValue(1), dl, Load, Ptr,
                           ST->getPointerInfo().getWithOffset(Offset), LoadMemVT,
                           MinAlign(ST->getAlignment(), Offset),
-                          ST->getMemOperand()->getFlags(), ST->getAAInfo()));
+                          ST->getMemOperand()->getFlags(), ST->getAAInfo(), 
+                             ST->getColorLabel())); // Attempt to pass color label);
     // The order of the stores doesn't matter - say it with a TokenFactor.
     SDValue Result = DAG.getNode(ISD::TokenFactor, dl, MVT::Other, Stores);
     return Result;
@@ -7151,14 +7158,17 @@ SDValue TargetLowering::expandUnalignedStore(StoreSDNode *ST,
   Store1 = DAG.getTruncStore(Chain, dl,
                              DAG.getDataLayout().isLittleEndian() ? Lo : Hi,
                              Ptr, ST->getPointerInfo(), NewStoredVT, Alignment,
-                             ST->getMemOperand()->getFlags());
+                             ST->getMemOperand()->getFlags(), 
+                            AAMDNodes(), // Default for AAInfo field
+                             ST->getColorLabel()); // Attempt to pass color label);
 
   Ptr = DAG.getObjectPtrOffset(dl, Ptr, IncrementSize);
   Alignment = MinAlign(Alignment, IncrementSize);
   Store2 = DAG.getTruncStore(
       Chain, dl, DAG.getDataLayout().isLittleEndian() ? Hi : Lo, Ptr,
       ST->getPointerInfo().getWithOffset(IncrementSize), NewStoredVT, Alignment,
-      ST->getMemOperand()->getFlags(), ST->getAAInfo());
+      ST->getMemOperand()->getFlags(), ST->getAAInfo(), 
+                             ST->getColorLabel()); // Attempt to pass color label);
 
   SDValue Result =
       DAG.getNode(ISD::TokenFactor, dl, MVT::Other, Store1, Store2);

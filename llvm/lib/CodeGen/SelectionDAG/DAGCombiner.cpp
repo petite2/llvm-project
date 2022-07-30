@@ -9931,7 +9931,8 @@ static SDValue tryToFoldExtOfLoad(SelectionDAG &DAG, DAGCombiner &Combiner,
   LoadSDNode *LN0 = cast<LoadSDNode>(N0);
   SDValue ExtLoad = DAG.getExtLoad(ExtLoadType, SDLoc(LN0), VT, LN0->getChain(),
                                    LN0->getBasePtr(), N0.getValueType(),
-                                   LN0->getMemOperand());
+                                   LN0->getMemOperand(),
+                                   LN0->getColorLabel()); // Attempt to pass color label
   Combiner.ExtendSetCCUses(SetCCs, N0, ExtLoad, ExtOpc);
   // If the load value is used only by N, replace it via CombineTo N.
   bool NoReplaceTrunc = SDValue(LN0, 0).hasOneUse();
@@ -10954,12 +10955,15 @@ SDValue DAGCombiner::ReduceLoadWidth(SDNode *N) {
   if (ExtType == ISD::NON_EXTLOAD)
     Load = DAG.getLoad(VT, DL, LN0->getChain(), NewPtr,
                        LN0->getPointerInfo().getWithOffset(PtrOff), NewAlign,
-                       LN0->getMemOperand()->getFlags(), LN0->getAAInfo());
+                       LN0->getMemOperand()->getFlags(), LN0->getAAInfo(),
+                       nullptr, // Default for Ranges
+                       LN0->getColorLabel()); // Attempt to pass color label
   else
     Load = DAG.getExtLoad(ExtType, DL, VT, LN0->getChain(), NewPtr,
                           LN0->getPointerInfo().getWithOffset(PtrOff), ExtVT,
                           NewAlign, LN0->getMemOperand()->getFlags(),
-                          LN0->getAAInfo());
+                          LN0->getAAInfo(),
+                          LN0->getColorLabel()); // Attempt to pass color label
 
   // Replace the old load's chain with the new load's chain.
   WorklistRemover DeadNodes(*this);
@@ -16037,7 +16041,10 @@ bool DAGCombiner::mergeStoresOfConstantsOrVecElts(
   if (!UseTrunc) {
     NewStore = DAG.getStore(NewChain, DL, StoredVal, FirstInChain->getBasePtr(),
                             FirstInChain->getPointerInfo(),
-                            FirstInChain->getAlignment());
+                            FirstInChain->getAlignment(),
+                            MachineMemOperand::MONone, // Default for MMOFlags
+                            AAMDNodes(), // Default for AAInfo
+                            FirstInChain->getColorLabel()); // Attempt to pass color label
   } else { // Must be realized as a trunc store
     EVT LegalizedStoredValTy =
         TLI.getTypeToTransformTo(*DAG.getContext(), StoredVal.getValueType());
@@ -17008,7 +17015,8 @@ SDValue DAGCombiner::visitSTORE(SDNode *N) {
         TLI.isStoreBitCastBeneficial(Value.getValueType(), SVT,
                                      DAG, *ST->getMemOperand())) {
       return DAG.getStore(Chain, SDLoc(N), Value.getOperand(0), Ptr,
-                          ST->getMemOperand());
+                          ST->getMemOperand(), 
+                             ST->getColorLabel()); // Attempt to pass color label);
     }
   }
 
@@ -17024,7 +17032,8 @@ SDValue DAGCombiner::visitSTORE(SDNode *N) {
         SDValue NewStore =
             DAG.getTruncStore(Chain, SDLoc(N), Value, Ptr, ST->getPointerInfo(),
                               ST->getMemoryVT(), *Alignment,
-                              ST->getMemOperand()->getFlags(), ST->getAAInfo());
+                              ST->getMemOperand()->getFlags(), ST->getAAInfo(), 
+                             ST->getColorLabel()); // Attempt to pass color label);
         // NewStore will always be N as we are only refining the alignment
         assert(NewStore.getNode() == N);
         (void)NewStore;
@@ -17067,7 +17076,8 @@ SDValue DAGCombiner::visitSTORE(SDNode *N) {
     AddToWorklist(Value.getNode());
     if (SDValue Shorter = DAG.GetDemandedBits(Value, TruncDemandedBits))
       return DAG.getTruncStore(Chain, SDLoc(N), Shorter, Ptr, ST->getMemoryVT(),
-                               ST->getMemOperand());
+                               ST->getMemOperand(), 
+                             ST->getColorLabel()); // Attempt to pass color label);
 
     // Otherwise, see if we can simplify the operation with
     // SimplifyDemandedBits, which only works if the value has a single use.
@@ -17135,7 +17145,8 @@ SDValue DAGCombiner::visitSTORE(SDNode *N) {
       TLI.isTruncStoreLegal(Value.getOperand(0).getValueType(),
                             ST->getMemoryVT())) {
     return DAG.getTruncStore(Chain, SDLoc(N), Value.getOperand(0),
-                             Ptr, ST->getMemoryVT(), ST->getMemOperand());
+                             Ptr, ST->getMemoryVT(), ST->getMemOperand(), 
+                             ST->getColorLabel()); // Attempt to pass color label);
   }
 
   // Always perform this optimization before types are legal. If the target
@@ -17323,13 +17334,15 @@ SDValue DAGCombiner::splitMergedValStore(StoreSDNode *ST) {
   SDValue Ptr = ST->getBasePtr();
   // Lower value store.
   SDValue St0 = DAG.getStore(Chain, DL, Lo, Ptr, ST->getPointerInfo(),
-                             ST->getAlignment(), MMOFlags, AAInfo);
+                             ST->getAlignment(), MMOFlags, AAInfo, 
+                             ST->getColorLabel()); // Attempt to pass color label);
   Ptr = DAG.getMemBasePlusOffset(Ptr, HalfValBitSize / 8, DL);
   // Higher value store.
   SDValue St1 =
       DAG.getStore(St0, DL, Hi, Ptr,
                    ST->getPointerInfo().getWithOffset(HalfValBitSize / 8),
-                   Alignment / 2, MMOFlags, AAInfo);
+                   Alignment / 2, MMOFlags, AAInfo, 
+                             ST->getColorLabel()); // Attempt to pass color label);
   return St1;
 }
 
@@ -22095,10 +22108,12 @@ bool DAGCombiner::parallelizeChainedStores(StoreSDNode *St) {
   if (St->isTruncatingStore())
     NewST = DAG.getTruncStore(BetterChain, SDLoc(St), St->getValue(),
                               St->getBasePtr(), St->getMemoryVT(),
-                              St->getMemOperand());
+                              St->getMemOperand(), 
+                             St->getColorLabel()); // Attempt to pass color label);
   else
     NewST = DAG.getStore(BetterChain, SDLoc(St), St->getValue(),
-                         St->getBasePtr(), St->getMemOperand());
+                         St->getBasePtr(), St->getMemOperand(), 
+                             St->getColorLabel()); // Attempt to pass color label);
 
   TFOps.push_back(NewST);
 

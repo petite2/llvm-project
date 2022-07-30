@@ -479,12 +479,14 @@ SDValue DAGTypeLegalizer::ExpandOp_NormalStore(SDNode *N, unsigned OpNo) {
 
   Lo = DAG.getStore(Chain, dl, Lo, Ptr, St->getPointerInfo(),
                     St->getOriginalAlign(), St->getMemOperand()->getFlags(),
-                    AAInfo);
+                    AAInfo, 
+                             St->getColorLabel()); // Attempt to pass color label);
 
   Ptr = DAG.getObjectPtrOffset(dl, Ptr, IncrementSize);
   Hi = DAG.getStore(
       Chain, dl, Hi, Ptr, St->getPointerInfo().getWithOffset(IncrementSize),
-      St->getOriginalAlign(), St->getMemOperand()->getFlags(), AAInfo);
+      St->getOriginalAlign(), St->getMemOperand()->getFlags(), AAInfo, 
+                             St->getColorLabel()); // Attempt to pass color label);
 
   return DAG.getNode(ISD::TokenFactor, dl, MVT::Other, Lo, Hi);
 }
