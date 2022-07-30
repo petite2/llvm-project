@@ -527,6 +527,7 @@ void RISCVDAGToDAGISel::doPeepholeLoadStoreADDI() {
     bool IsNewMemOp = false;
     unsigned offset_bits = 6;
     unsigned shift_bits = 0;
+    int LabelOpIdx;
 
     // Only attempt this optimisation for I-type loads and S-type stores.
     switch (N->getMachineOpcode()) {
@@ -543,6 +544,7 @@ void RISCVDAGToDAGISel::doPeepholeLoadStoreADDI() {
     case RISCV::LBN:
     case RISCV::LBUN:
       IsNewMemOp = true;
+      LabelOpIdx = 2;
     case RISCV::LB:
     case RISCV::LH:
     case RISCV::LW:
@@ -563,6 +565,7 @@ void RISCVDAGToDAGISel::doPeepholeLoadStoreADDI() {
       shift_bits++;
     case RISCV::SBN:
       IsNewMemOp = true;
+      LabelOpIdx = 3;
     case RISCV::SB:
     case RISCV::SH:
     case RISCV::SW:
@@ -572,6 +575,20 @@ void RISCVDAGToDAGISel::doPeepholeLoadStoreADDI() {
       BaseOpIdx = 1;
       OffsetOpIdx = 2;
       break;
+    }
+
+    // Modify the color label operand of the load/store.
+    if (IsNewMemOp) {
+      SDValue LabelOperand = N->getOperand(LabelOpIdx);
+      auto LabelConst = dyn_cast<ConstantSDNode>(LabelOperand);
+      unsigned Label = LabelConst->getZExtValue();
+      LabelOperand = CurDAG->getConstant(N->getColorLabel(), SDLoc(LabelOperand), LabelOperand.getValueType());
+      if (BaseOpIdx == 0) // Load
+        CurDAG->UpdateNodeOperands(N, N->getOperand(0), N->getOperand(1),
+                                   LabelOperand, N->getOperand(3));
+      else // Store
+        CurDAG->UpdateNodeOperands(N, N->getOperand(0), N->getOperand(1),
+                                   N->getOperand(2), LabelOperand, N->getOperand(4));
     }
 
     if (!isa<ConstantSDNode>(N->getOperand(OffsetOpIdx)))

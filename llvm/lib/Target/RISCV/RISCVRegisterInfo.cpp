@@ -209,8 +209,12 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   }
   if (is_labeled) {
     int label = MI.getOperand(FIOperandNum + 2).getImm();
-    assert(label == 60);
-    // Offset += label << offset_bits;
+    // assert(label == 60);
+    // if (label != 60) {
+    //   std::cerr << "MJL_Test: eliminateFrameIndex ";
+    //   MI.dump();
+    //   std::cerr << std::endl;
+    // }
   }
 
   if (!isInt<32>(Offset)) {
